@@ -7,3 +7,6 @@ This library:
 - publishes its own definition files
 - has _no_ side effects
 - aims to have low/no interactions between code (i.e., using one helper won't bring in lots of others)
+- has no dependencies
+
+While you _can_ depend on this project directly, you should also consider bundling just the parts you need in your project's output (i.e., make it a `devDependency`).
