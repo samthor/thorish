@@ -1,22 +1,34 @@
 
 
 export class WorkQueue<T> {
-  #promise: Promise<void>;
-  #ready = () => { };
   #pending: T[] = [];
+  #queue: (() => void)[] = [];
 
-  constructor() {
-    this.#promise = new Promise((r) => {
-      this.#ready = r;
-    });
-  }
+  #releaseActive = false;
+  #releaseTask = Promise.resolve();
 
-  #maybeReset() {
-    if (this.#pending.length === 0) {
-      this.#promise = new Promise((r) => {
-        this.#ready = r;
-      });
+  /**
+   * The {@link WorkQueue} releases waiting tasks one-per-microtask. This maintains the invariant
+   * that every time `wait` returns or resolves, there's at least one item in the queue: otherwise,
+   * resolving everything at once might allow other waiters to steal all items.
+   */
+  #releasePending() {
+    if (this.#releaseActive) {
+      return;
     }
+
+    this.#releaseTask = this.#releaseTask.then(async () => {
+      this.#releaseActive = true;
+      try {
+        while (this.#queue.length && this.#pending.length) {
+          const resolve = this.#queue.shift()!;
+          resolve();
+          await new Promise<void>((r) => queueMicrotask(r));
+        }
+      } finally {
+        this.#releaseActive = false;
+      }
+    });
   }
 
   /**
@@ -24,11 +36,8 @@ export class WorkQueue<T> {
    */
   async *[Symbol.asyncIterator]() {
     for (; ;) {
-      do {
-        await this.wait();
-      } while (this.#pending.length === 0);
-
-      yield this.shift()!;
+      await this.wait();
+      yield this.#pending.shift()!;
     }
   }
 
@@ -44,20 +53,13 @@ export class WorkQueue<T> {
   /**
    * Waits until there is something in the queue that your task can process. This does _not_ return
    * the item itself. This returns `undefined` if no waiting is required.
-   *
-   * Due to the way JS' async code works, the caller still must check if there's an item available.
    */
   wait(): void | Promise<void> {
     if (this.#pending.length === 0) {
-      return this.#promise.then(() => this.wait());
+      return new Promise<void>((r) => {
+        this.#queue.push(r);
+      });
     }
-  }
-
-  /**
-   * This is like {@link WorkQueue#wait}, but always returns a {@link Promise}.
-   */
-  async alwaysWait() {
-    await this.wait();
   }
 
   /**
@@ -65,11 +67,8 @@ export class WorkQueue<T> {
    * always receive the next item, so don't throw it away.
    */
   async next(): Promise<T> {
-    do {
-      await this.wait();
-    } while (this.#pending.length === 0);
-
-    return this.shift()!;
+    await this.wait();
+    return this.#pending.shift()!;
   }
 
   /**
@@ -79,18 +78,12 @@ export class WorkQueue<T> {
     try {
       return this.#pending.push(...items);
     } finally {
-      if (this.#pending.length) {
-        this.#ready();
-      }
+      this.#releasePending();
     }
   }
 
   pop(): T | undefined {
-    try {
-      return this.#pending.pop();
-    } finally {
-      this.#maybeReset();
-    }
+    return this.#pending.pop();
   }
 
   /**
@@ -100,18 +93,12 @@ export class WorkQueue<T> {
     try {
       return this.#pending.unshift(...items);
     } finally {
-      if (this.#pending.length) {
-        this.#ready();
-      }
+      this.#releasePending();
     }
   }
 
   shift(): T | undefined {
-    try {
-      return this.#pending.shift();
-    } finally {
-      this.#maybeReset();
-    }
+    return this.#pending.shift();
   }
 
   get length() {

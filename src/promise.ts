@@ -38,7 +38,7 @@ export function resolvable<T = void>(): {
  * Returns a {@link Promise} that rejects with a {@link DOMException} when the passed
  * {@link AbortSignal} aborts (or rejected immediately, if already aborted).
  */
-export const promiseForSignal = (signal: AbortSignal) => {
+export function promiseForSignal(signal: AbortSignal) {
   if (signal.aborted) {
     return Promise.reject(new DOMException('AbortError'));
   }
@@ -47,4 +47,4 @@ export const promiseForSignal = (signal: AbortSignal) => {
       reject(new DOMException('AbortError')),
     );
   });
-};
+}
