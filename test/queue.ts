@@ -35,16 +35,12 @@ test('queue wait', async () => {
   assert.ok(wait2);
 
   const done1 = wait1.then(() => {
-    console.info('wait1 fire', wq.length);
     const p = wq.pop();
-    console.info('wait1 got', p);
     assert.ok(p);
     wait1fire = true;
   });
   const done2 = wait2.then(() => {
-    console.info('wait2 fire', wq.length);
     const p = wq.pop();
-    console.info('wait2 got', p);
     assert.ok(p);
     wait2fire = true;
   });
@@ -58,8 +54,48 @@ test('queue wait', async () => {
   wq.push('hello2');
   assert.strictEqual(wq.length, 1);
   await wrapTrigger(queueMicrotask);
-  console.debug({wait1, wait1fire, wait2, wait2fire, length: wq.length});
   assert.ok(wait1fire && wait2fire, 'both must be fired');
+
+  await done1;
+  await done2;
+});
+
+test('wait2', async () => {
+  const wq = new WorkQueue<string>();
+  let done = false;
+  try {
+    // This aggressively pops things in a setTimeout loop, basically "stealing" the values that
+    // are pushed into the queue.
+    (async () => {
+      while (!done) {
+        wq.pop();
+        // TODO: should be queueMicrotask, but Node freaks out - test env issues?
+        await wrapTrigger(setTimeout, 0);
+      }
+    })();
+
+    const n1 = wq.next();
+
+    wq.push('a');
+    wq.push('b');
+    wq.push('c');
+
+    await wrapTrigger(setTimeout, 25);
+
+    const n2 = wq.next();
+    const n3 = wq.next();
+
+    // We prove that some values have been stolen, AND the returned Promises have not resolved
+    // with accidental undefined values.
+    const out = await Promise.race([
+      Promise.all([n1, n2, n3]),
+      Promise.resolve(true),
+    ]);
+    assert.strictEqual(out, true);
+
+  } finally {
+    done = true;
+  }
 });
 
 test('undefined', async () => {
