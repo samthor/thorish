@@ -1,24 +1,37 @@
 {
-	"devDependencies": {
-		"@types/node": "^18.7.18",
-		"esbuild": "^0.15.9",
-		"tsx": "^3.9.0",
-		"typescript": "^4.8.3"
-	},
-	"type": "module",
-	"scripts": {
-		"test": "tsx test/",
-		"build:dist": "esbuild src/index.ts --format=esm --outfile=dist/index.esm.js --bundle --sourcemap",
-		"build:types": "tsc --emitDeclarationOnly --declaration src/index.ts --outDir dist/types --target esnext",
-		"build": "rm -rf dist; pnpm run build:dist && pnpm run build:types"
-	},
-	"sideEffects": false,
-	"types": "dist/types/index.d.ts",
-	"main": "dist/index.esm.js",
-	"exports": {
-		".": {
-			"import": "./dist/index.esm.js",
-			"types": "./dist/types/index.d.ts"
-		}
-	}
+  "devDependencies": {
+    "@types/node": "^18.7.18",
+    "esbuild": "^0.15.9",
+    "tsx": "^3.9.0",
+    "typescript": "^4.8.3"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "tsx test/",
+    "build:dist": "esbuild src/index.ts --format=esm --outfile=dist/index.esm.js --bundle --sourcemap",
+    "build:types": "tsc --emitDeclarationOnly --declaration src/index.ts --outDir dist/types --target esnext",
+    "build": "rm -rf dist; pnpm run build:dist && pnpm run build:types"
+  },
+  "sideEffects": false,
+  "types": "dist/types/index.d.ts",
+  "main": "dist/index.esm.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "name": "thorish",
+  "description": "This is a library of useful JS concepts and data structures for Node and the browser. It it, unashamedly, a dumping ground for code needed by [@samthor](https://twitter.com/samthor)'s projects.",
+  "version": "1.0.0",
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [
+    "js",
+    "datastructures",
+    "queue"
+  ],
+  "author": "Sam Thorogood <sam.thorogood@gmail.com>",
+  "license": "Apache-2.0"
 }
