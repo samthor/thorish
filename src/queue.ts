@@ -22,7 +22,6 @@ export class WorkQueue<T> {
       try {
         while (this.#queue.length && this.#pending.length) {
           const resolve = this.#queue.shift()!;
-          console.debug('releaseing', resolve);
           resolve();
           await new Promise<void>((r) => queueMicrotask(r));
         }
