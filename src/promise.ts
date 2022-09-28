@@ -67,3 +67,22 @@ export async function withSignal<T>(signal: AbortSignal | undefined, task: Promi
 export function isSignalAbortException(e: any): e is DOMException {
   return e instanceof DOMException && e.message === 'AbortError';
 }
+
+
+/**
+ * Returns a {@link Promise} that resolves after a the first event is fired.
+ *
+ * This doesn't correctly infer the type of the {@link Event}.
+ */
+export function promiseForEvent<X extends Event>(target: EventTarget, eventName: string, options: Partial<{ passive: boolean, signal: AbortSignal }> = {}): Promise<X> {
+  if (options.signal?.aborted) {
+    return Promise.reject(new DOMException('AbortError'));
+  }
+  return new Promise<X>((resolve, reject) => {
+    options.signal?.addEventListener('abort', () =>
+      reject(new DOMException('AbortError')),
+    );
+    target.addEventListener(eventName, (e) => resolve(e as X), { ...options, once: true });
+  });
+}
+
