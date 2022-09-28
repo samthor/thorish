@@ -1,59 +1,76 @@
-import { promiseForSignal } from './promise';
+import { isSignalAbortException, timeout, withSignal } from './promise';
 import { WorkQueue } from './queue';
 
 
 export type TaskType<T> = {
   done: Promise<void>;
-  queue: (arg: T) => void;
+  queue: (arg: T, ...rest: T[]) => void;
 }
 
 
 export type TaskOptions = {
   signal: AbortSignal;
+
+  /**
+   * Whether only to pass unique items (as per {@link Set} equality) to the task runner.
+   */
+  unique: boolean;
+
+  /**
+   * The minimum time to wait before running a task.
+   */
+  min: number;
+
+  /**
+   * The time to wait for items to run the task on, after the first is seen.
+   */
   delay: number;
 }
 
 
 /**
- * Dedups and runs a task forever (unless it crashes).
+ * Runs a task forever (unless it crashes). This enables a "single-threaded" task to run over items
+ * pushed into it. Errors throws inside the task runner will result in the returned {@link Promise}
+ * rejecting.
  *
- * Returns a function which triggers the task.
+ * Returns a function which triggers the task for new items.
  */
-export function dedupTask<T = void>(task: (...args: T[]) => void | Promise<void>, options: Partial<TaskOptions> = {}): TaskType<T> {
+export function workTask<T = void>(task: (...args: T[]) => void | Promise<void>, options: Partial<TaskOptions> = {}): TaskType<T> {
   const wq = new WorkQueue<T>();
 
-  const delay = options.delay ?? 0;
-  const signal = options.signal;
-
-  const abortPromise = options.signal ? promiseForSignal(options.signal) : Promise.resolve();
+  const {
+    min = 0,
+    delay = 0,
+    signal,
+    unique = false,
+  } = options;
 
   const done = (async () => {
-    for (;;) {
+    for (; ;) {
       try {
-        await Promise.race([wq.wait(), abortPromise]);
+        await withSignal(signal, timeout(min));
+        await withSignal(signal, wq.wait());
+        await withSignal(signal, timeout(delay));
       } catch (e) {
-        if (e instanceof DOMException && signal?.aborted) {
-          return;  // aborted
+        if (isSignalAbortException(e)) {
+          return;  // aborted, drop tasks
         }
         throw e;
       }
 
-      await new Promise((r) => setTimeout(r, delay));
-
-      // We can just check this here before doing work.
-      if (signal?.aborted) {
-        return;
+      let all: Iterable<T>;
+      if (unique) {
+        all = new Set(wq).keys();
+      } else {
+        all = [...wq];
       }
 
-      const all = [...wq];
-      if (all.length) {
-        await task(...all);
-      }
+      await task(...all);
     }
   })();
 
   return {
     done,
-    queue: (arg) => wq.push(arg),
+    queue: (arg, ...rest) => wq.push(arg, ...rest),
   };
 }

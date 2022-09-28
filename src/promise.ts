@@ -38,7 +38,7 @@ export function resolvable<T = void>(): {
  * Returns a {@link Promise} that rejects with a {@link DOMException} when the passed
  * {@link AbortSignal} aborts (or rejected immediately, if already aborted).
  */
-export function promiseForSignal(signal: AbortSignal) {
+export function promiseForSignal(signal: AbortSignal): Promise<never> {
   if (signal.aborted) {
     return Promise.reject(new DOMException('AbortError'));
   }
@@ -47,4 +47,23 @@ export function promiseForSignal(signal: AbortSignal) {
       reject(new DOMException('AbortError')),
     );
   });
+}
+
+
+/**
+ * Waits for a {@link Promise} and a passed {@link AbortSignal}.
+ */
+export async function withSignal<T>(signal: AbortSignal | undefined, task: Promise<T> | T): Promise<T> {
+  if (signal === undefined) {
+    return task;
+  }
+  return Promise.race([task, promiseForSignal(signal)]);
+}
+
+
+/**
+ * Checks if the passed var is a {@link DOMException} of message `"AbortError"`.
+ */
+export function isSignalAbortException(e: any): e is DOMException {
+  return e instanceof DOMException && e.message === 'AbortError';
 }
