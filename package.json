@@ -8,18 +8,28 @@
   "type": "module",
   "scripts": {
     "test": "tsx test/",
-    "build:dist": "esbuild src/index.ts --format=esm --outfile=dist/index.esm.js --bundle --sourcemap",
+    "build:dist-node": "esbuild src/index.ts --format=esm --platform=node --outfile=dist/node.esm.js --bundle --sourcemap",
+    "build:dist-browser": "esbuild src/index.ts --format=esm --platform=browser --outfile=dist/browser.esm.js --bundle --sourcemap",
     "build:types": "tsc --emitDeclarationOnly --declaration src/index.ts --outDir dist/types --target esnext",
-    "build": "rm -rf dist; pnpm run build:dist && pnpm run build:types",
+    "build": "rm -rf dist; pnpm run build:dist-node && pnpm run build:dist-browser && pnpm run build:types",
     "prepublishOnly": "pnpm run build"
   },
   "sideEffects": false,
   "types": "dist/types/index.d.ts",
-  "main": "dist/index.esm.js",
+  "main": "dist/index-node.esm.js",
   "exports": {
     ".": {
-      "import": "./dist/index.esm.js",
+      "import": {
+        "node": "./dist/node.esm.js",
+        "browser": "./dist/browser.esm.js"
+      },
       "types": "./dist/types/index.d.ts"
+    }
+  },
+  "imports": {
+    "#support": {
+      "node": "./src/support/node.ts",
+      "browser": "./src/support/browser.ts"
     }
   },
   "name": "thorish",
