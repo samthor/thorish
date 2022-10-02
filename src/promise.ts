@@ -51,7 +51,8 @@ export function promiseForSignal(signal: AbortSignal): Promise<never> {
 
 
 /**
- * Waits for a {@link Promise} and a passed {@link AbortSignal}.
+ * Waits for a {@link Promise} and a passed (optional) {@link AbortSignal}. Throws
+ * {@link DOMException} as per {@link promiseForSignal} if the signal is aborted first.
  */
 export async function withSignal<T>(signal: AbortSignal | undefined, task: Promise<T> | T): Promise<T> {
   if (signal === undefined) {
@@ -70,7 +71,7 @@ export function isSignalAbortException(e: any): e is DOMException {
 
 
 /**
- * Returns a {@link Promise} that resolves after a the first event is fired.
+ * Returns a {@link Promise} that resolves after a the first event of the given name is fired.
  *
  * This doesn't correctly infer the type of the {@link Event}.
  */

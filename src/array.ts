@@ -2,13 +2,15 @@
 /**
  * Finds all indexes of a given array which match the given predicate.
  */
-export function findAllIndex<X>(arr: X[], predicate: (x: X) => boolean): number[] {
+export function findAllIndex<X>(arr: Iterable<X>, predicate: (x: X) => boolean): number[] {
   const out: number[] = [];
 
-  for (let i = 0; i < arr.length; ++i) {
-    if (predicate(arr[i])) {
-      out.push(i);
+  let index = 0;
+  for (const check of arr) {
+    if (predicate(check)) {
+      out.push(index);
     }
+    ++index;
   }
 
   return out;
