@@ -1,12 +1,12 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { dedupTask } from '../src';
+import { workTask } from '../src';
 
 test('task', async () => {
   const c = new AbortController();
   const signal = c.signal;
 
-  const t = dedupTask<number>((...args) => {
+  const t = workTask<number>((...args) => {
     assert.deepStrictEqual(args, [1, 2, 3]);
   }, { signal });
 
