@@ -58,6 +58,10 @@ export class CountSet<T> {
 }
 
 
+/**
+ * A set of pairs. Adding one side (e.g., `.add(a, b)`) is the same as adding the other (e.g.,
+ * `.add(b, a)`).
+ */
 export class PairSet<K> {
   #m = new PairMap<K, boolean>();
 
@@ -158,4 +162,43 @@ export class PairMap<K, V> {
   get(a: K, b: K): V | undefined {
     return this.#m.get(a)?.get(b);
   }
+}
+
+
+/**
+ * A map which itself contains a set of items.
+ */
+export class MultiMap<K, V> {
+  #m = new Map<K, Set<V>>();
+
+  add(k: K, v: V): boolean {
+    let set = this.#m.get(k);
+    if (set === undefined) {
+      set = new Set();
+      this.#m.set(k, set);
+    }
+    if (set.has(v)) {
+      return false;
+    }
+    set.add(v);
+    return true;
+  }
+
+  delete(k: K, v: V): boolean {
+    const set = this.#m.get(k);
+    return set?.delete(v) ?? false;
+  }
+
+  has(k: K, v: V): boolean {
+    return this.#m.get(k)?.has(v) ?? false;
+  }
+
+  count(k: K): number {
+    return this.#m.get(k)?.size ?? 0;
+  }
+
+  get(k: K): Iterable<V> {
+    return this.#m.get(k) ?? [];
+  }
+
 }

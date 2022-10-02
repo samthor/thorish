@@ -42,3 +42,18 @@ test('pair', () => {
   assert.strictEqual(c.delete('b', 'a'), false);
   assert.deepStrictEqual([...c.otherKeys('b')], ['c']);
 });
+
+test('multimap', () => {
+  const m = new maps.MultiMap<string, number>();
+
+  assert.strictEqual(m.add('hello', 1), true);
+  assert.strictEqual(m.add('hello', 2), true);
+  assert.strictEqual(m.add('hello', 1), false);
+  assert.strictEqual(m.count('hello'), 2);
+  assert.deepStrictEqual([...m.get('hello')], [1, 2]);
+  assert.strictEqual(m.delete('hello', 2), true);
+  assert.strictEqual(m.delete('hello', 2), false);
+  assert.strictEqual(m.count('hello'), 1);
+  assert.strictEqual(m.delete('hello', 1), true);
+  assert.deepStrictEqual([...m.get('hello')], []);
+});
