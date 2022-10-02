@@ -1,9 +1,10 @@
 
 
 /**
- * Pass to {@link matchPartial} to match any value at a given node.
+ * Pass to {@link matchPartial} to match any value at a given node. This is {@link Symbol}, but
+ * returned as `any` for convenience.
  */
-export const matchAny = Symbol('matchAny');
+export const matchAny = Symbol('matchAny') as any;
 
 
 /**
@@ -20,7 +21,7 @@ export function matchPartial<T>(filter: DeepObjectPartial<T>, object: T): boolea
     return false;  // can never match
   } else if (object === filter || filter === matchAny) {
     return true;  // allow match/any
-  } else if (object && filter && typeof object === 'object' && typeof filter === 'object') {
+  } else if (typeof object === 'object' && object) {
     for (const key in filter) {
       if (!matchPartial(filter[key], object[key as any])) {
         return false;  // part of filter did not match
@@ -41,18 +42,20 @@ export function matchPartial<T>(filter: DeepObjectPartial<T>, object: T): boolea
  * the same filter.
  */
 export function readMatchAny<T>(filter: DeepObjectPartial<T>, object: T): any[] | void {
-  if (filter === matchAny) {
+  if (object === undefined) {
+    // cannot match
+  } else if (filter === matchAny) {
     return [object];  // found an "any" node, return object here
-  } else if (filter && typeof filter === 'object') {
-    let agg: any[] | undefined = undefined;
+  } else if (typeof object === 'object' && object) {
+    let agg: any[] | undefined;
 
     for (const key in filter) {
-      const out = readMatchAny(filter[key], object?.[key as any]);
+      const out = readMatchAny(filter[key], object[key as any]);
       if (out) {
-        if (agg) {
-          agg.push(...out);
-        } else {
+        if (agg === undefined) {
           agg = out;
+        } else {
+          agg.push(...out);
         }
       }
     }
