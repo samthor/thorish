@@ -1,5 +1,6 @@
 import './array';
 import './maps';
+import './matcher';
 import './memoize';
 import './object-utils';
 import './promise';
