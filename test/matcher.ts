@@ -5,6 +5,8 @@ import { Matcher, matchAny, MatcherSub } from '../src/matcher';
 test('matcher match helpers', () => {
   const m = new Matcher<string, any>();
 
+  m.set('asdfsad', 1234);
+
   m.set('abc', { x: 1 });
   assert.deepStrictEqual([...m.matchAll({ x: matchAny })], ['abc']);
   assert.deepStrictEqual([...m.matchAll({ x: 2 })], []);
@@ -16,6 +18,20 @@ test('matcher match helpers', () => {
 
   assert.strictEqual(m.delete('def'), true);
   assert.strictEqual(m.matchAny({ y: 2 }), false);
+});
+
+test('read', () => {
+  const m = new Matcher<string, { x: number, y: number, z: { a: number, b: number } }>();
+
+  assert.deepStrictEqual(m.read([]), undefined);
+
+  m.set('qqq', { x: 1, y: 2, z: { a: 3, b: 4 } });
+  assert.deepStrictEqual(m.read(['qqq']), { x: 1, y: 2, z: { a: 3, b: 4 } });
+
+  m.set('bar', { x: 2, y: 3, z: { a: 3, b: 100 }});
+  assert.deepStrictEqual(m.read(['bar', 'qqq']), { z: { a: 3 } });
+
+  assert.deepStrictEqual(m.read(['bar', 'qqq2']), undefined);
 });
 
 test('matcher sub', () => {

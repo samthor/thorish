@@ -63,3 +63,24 @@ export function readMatchAny<T>(filter: DeepObjectPartial<T>, object: T): any[] 
     return agg;
   }
 }
+
+
+/**
+ * Return the parts of a/b that are the same. Otherwise, returns `undefined`.
+ */
+ export function intersectObjects<T>(a: T, b: T): DeepObjectPartial<T> | undefined {
+  if (a === b) {
+    return a as DeepObjectPartial<T>;
+  }
+
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    const unionObject: Record<string, any> = {};
+    for (const key in a) {
+      const out = intersectObjects(a[key], b[key]);
+      if (out !== undefined) {
+        unionObject[key] = out;
+      }
+    }
+    return unionObject as DeepObjectPartial<T>;  // this will be {} if no keys match - fine
+  }
+}
