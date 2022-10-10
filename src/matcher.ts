@@ -118,7 +118,7 @@ export class Matcher<K, T> {
    */
   read(keys: Iterable<K>): DeepObjectPartial<T> | undefined {
     const o = this.#objects;
-    const gen = (function*() {
+    const gen: Generator<T | undefined, void, void> = (function* () {
       for (const key of keys) {
         yield o.get(key);
       }
