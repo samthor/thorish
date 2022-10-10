@@ -1,5 +1,5 @@
 
-import { DeepObjectPartial, readMatchAny, matchPartial, intersectObjects } from './object-utils';
+import { DeepObjectPartial, readMatchAny, matchPartial, intersectObjects, intersectManyObjects } from './object-utils';
 import { isDeepStrictEqual } from './support/index';
 export { matchAny } from './object-utils';
 
@@ -117,26 +117,14 @@ export class Matcher<K, T> {
    * Returns the intersection of reading the given keys.
    */
   read(keys: Iterable<K>): DeepObjectPartial<T> | undefined {
-    let count = 0;
-    let first = true;
-    let out: DeepObjectPartial<T> | undefined = undefined;
-
-    for (const k of keys) {
-      ++count;
-
-      const update = this.#objects.get(k) as DeepObjectPartial<T>;
-      if (update === undefined) {
-        return undefined as DeepObjectPartial<T>;  // short-circuit, nothing here
-      } else if (first) {
-        first = false;
-        out = update;
-      } else {
-        out = intersectObjects(out, update) as DeepObjectPartial<T>;
+    const o = this.#objects;
+    const gen = (function*() {
+      for (const key of keys) {
+        yield o.get(key);
       }
-    }
+    })();
 
-    // If we only read the first entry, we didn't merge/clone it.
-    return count === 1 ? structuredClone(out) : out;
+    return intersectManyObjects(gen);
   }
 
   /**

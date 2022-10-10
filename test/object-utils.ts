@@ -27,7 +27,6 @@ test('matchPartial', () => {
   assert.strictEqual(objectUtils.matchPartial({ isUndefined: objectUtils.matchAny }, o), false);
 });
 
-
 test('readMatchAny', () => {
   const o = {
     a: {
@@ -40,4 +39,16 @@ test('readMatchAny', () => {
   assert.deepStrictEqual(objectUtils.readMatchAny({ a: { b: objectUtils.matchAny } }, o), [1]);
   assert.deepStrictEqual(objectUtils.readMatchAny({ a: { b: objectUtils.matchAny, c: objectUtils.matchAny } }, o), [1, 1234]);
   assert.deepStrictEqual(objectUtils.readMatchAny({ d: objectUtils.matchAny } as any, o), undefined);
+});
+
+test('intersectObjects', () => {
+  assert.strictEqual(objectUtils.intersectObjects(1, 2), undefined);
+  assert.strictEqual(objectUtils.intersectObjects(1, 1), 1);
+
+  // undefined is not included
+  assert.deepStrictEqual(objectUtils.intersectObjects({ a: undefined, b: 1 }, { a: undefined, b: 1 }), { b: 1 });
+
+  // check dse but not ===
+  assert.deepStrictEqual(objectUtils.intersectObjects({ a: 'hello', b: 'bob' }, { a: 'hello', b: 'there'} ), { a: 'hello' });
+  assert.notEqual(objectUtils.intersectObjects({ a: 'hello', b: 'bob' }, { a: 'hello', b: 'there'} ), { a: 'hello' });
 });

@@ -68,7 +68,7 @@ export function readMatchAny<T>(filter: DeepObjectPartial<T>, object: T): any[] 
 /**
  * Return the parts of a/b that are the same. Otherwise, returns `undefined`.
  */
- export function intersectObjects<T>(a: T, b: T): DeepObjectPartial<T> | undefined {
+export function intersectObjects<T>(a: T | DeepObjectPartial<T> | undefined, b: T | DeepObjectPartial<T> | undefined): DeepObjectPartial<T> | undefined {
   if (a === b) {
     return a as DeepObjectPartial<T>;
   }
@@ -82,5 +82,43 @@ export function readMatchAny<T>(filter: DeepObjectPartial<T>, object: T): any[] 
       }
     }
     return unionObject as DeepObjectPartial<T>;  // this will be {} if no keys match - fine
+  }
+}
+
+
+/**
+ * Intersect many objects together (0-n objects). May return `undefined`.
+ */
+export function intersectManyObjects<T>(of: Iterable<T>): DeepObjectPartial<T> | undefined {
+  const iter = of[Symbol.iterator]();
+  const first = iter.next();
+  if (first.done) {
+    return;
+  }
+
+  let out = first.value as DeepObjectPartial<T> | undefined;
+  if (typeof out !== 'object') {
+    return out;
+  }
+
+  let ir = iter.next();
+  if (ir.done) {
+    return structuredClone(out);  // only had 1 value, return clone
+  }
+
+  for (; ;) {
+    out = intersectObjects(out as DeepObjectPartial<T>, ir.value);
+    if (typeof out !== 'object') {
+      return out;
+    }
+
+    for (const _ in out) {
+      // hooray, we have at least one key!
+      ir = iter.next();
+      if (ir.done) {
+        return out;  // no more data
+      }
+      break;  // continue next loop
+    }
   }
 }

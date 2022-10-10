@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { Matcher, matchAny, MatcherSub } from '../src/matcher';
+import { Matcher, matchAny } from '../src/matcher';
 
 test('matcher match helpers', () => {
   const m = new Matcher<string, any>();
