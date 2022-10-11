@@ -122,3 +122,22 @@ export function intersectManyObjects<T>(of: Iterable<T>): DeepObjectPartial<T> |
     }
   }
 }
+
+
+/**
+ * Call {@link Object.freeze} on this object as well as any of its child objects.
+ */
+export function deepFreeze(object: any): void {
+  if (object && typeof object === 'object') {
+    const propNames = Object.getOwnPropertyNames(object);
+
+    for (const name of propNames) {
+      const value = object[name];
+      deepFreeze(value);
+    }
+
+    return Object.freeze(object);
+  }
+
+  return object;
+}

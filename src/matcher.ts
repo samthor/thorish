@@ -1,6 +1,8 @@
 
-import { DeepObjectPartial, readMatchAny, matchPartial, intersectObjects, intersectManyObjects } from './object-utils';
+import { Condition } from './cond';
+import { DeepObjectPartial, readMatchAny, matchPartial, intersectObjects, intersectManyObjects, deepFreeze } from './object-utils';
 import { isDeepStrictEqual } from './support/index';
+import type { AbortSignalArgs } from './types';
 export { matchAny } from './object-utils';
 
 
@@ -128,13 +130,16 @@ export class Matcher<K, T> {
   }
 
   /**
-   * Attaches a subscripton to this {@link Matcher} based on the given {@link Filter}.
+   * Attaches a subscripton to this {@link Matcher} based on the given {@link Filter}. The filter
+   * will be frozen before use, so you cannot change it later.
    *
    * This will add all initially matching objects to the {@link MatcherSub}. However, the current
    * matching set will not be cleared when the passed signal is aborted.
    */
-  sub(filter: Filter<T>, g: MatcherSub<K>, { signal }: { signal?: AbortSignal } = {}): void {
-    if (signal?.aborted) {
+  sub(filter: Filter<T>, g: MatcherSub<K>, options?: AbortSignalArgs): void {
+    deepFreeze(filter);
+
+    if (options?.signal?.aborted) {
       return;
     }
 
@@ -146,10 +151,145 @@ export class Matcher<K, T> {
       g.add(id);
     }
 
-    signal?.addEventListener('abort', () => {
+    options?.signal?.addEventListener('abort', () => {
       // TODO: remove matches?
       this.#groups.delete(key);
     });
+  }
+
+}
+
+
+export interface Group<K> {
+  active(): boolean;
+  addListener(fn: () => any, options?: AbortSignalArgs): void;
+  removeListener(fn: () => any);
+}
+
+
+export class CombineGroup<K> implements Group<K> {
+  #groups: Group<K>[];
+  #cond: Condition = new Condition();
+  #listener: () => void;
+
+  constructor(groups: Group<K>[]) {
+    this.#groups = groups.slice();
+
+    this.#listener = () => {
+      this.#cond.state = this.isActive(this.#groups);
+    };
+  }
+
+  protected isActive(groups: Group<K>[]) {
+    // AND
+    for (const g of groups) {
+      if (!g.active()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  active(): boolean {
+    if (this.#cond.observed()) {
+      return this.#cond.state;
+    }
+    return this.isActive(this.#groups);
+  }
+
+  addListener(fn: () => any, options?: AbortSignalArgs): void {
+    const setup = () => {
+      this.#groups.forEach((g) => g.addListener(this.#listener));
+      this.#cond.state = this.isActive(this.#groups);
+    };
+    this.#cond.addListener(fn, { ...options, setup });
+  }
+
+  removeListener(fn: () => any) {
+    if (this.#cond.removeListener(fn)) {
+      this.#groups.forEach((g) => g.removeListener(this.#listener));
+    }
+  }
+}
+
+
+/**
+ * Provides a wrapper to manage a {@link Filter} over a {@link Matcher}, both with matched keys
+ * as well as a derived "active" state.
+ *
+ * By default, the group is active if any item matches the filter, however subclasses can change
+ * this behavior by overriding {@link MatcherGroup#isActive}.
+ */
+export class MatcherGroup<K, T> implements Group<K> {
+  #filter: Filter<T>;
+  #matcher: Matcher<K, T>;
+  #signal: AbortSignal | undefined;
+
+  #matchingSet = new Set<K>();
+  #abortSub = () => { };
+  #cond: Condition;
+
+  constructor(filter: Filter<T>, matcher: Matcher<K, T>, options?: AbortSignalArgs) {
+    this.#filter = filter;
+    this.#matcher = matcher;
+    this.#signal = options?.signal;
+
+    // if this is fired, abort the current sub and clear listeners
+    this.#signal?.addEventListener('abort', () => {
+      this.#abortSub();
+    });
+
+    this.#cond = new Condition(options);
+  }
+
+  protected isActive(matchingKeys: ReadonlySet<K>) {
+    return matchingKeys.size !== 0;
+  }
+
+  active() {
+    if (this.#cond.observed()) {
+      // there's listeners, so we're maintaining this boolean
+      return this.#cond.state;
+    }
+    return this.#matcher.matchAny(this.#filter);
+  }
+
+  matching(): Iterable<K> {
+    if (this.#cond.observed()) {
+      // we're maintaining this
+      return this.#matchingSet.keys();
+    }
+    return this.#matcher.matchAll(this.#filter);
+  }
+
+  addListener(fn: () => any, options?: AbortSignalArgs) {
+    const setup = () => {
+      const c = new AbortController();
+      c.signal.addEventListener('abort', () => this.#matchingSet.clear());
+      this.#abortSub = () => c.abort();
+  
+      const outer = this;
+      const sub = {
+        add(id: K) {
+          outer.#matchingSet.add(id);
+          outer.#cond.state = outer.isActive(outer.#matchingSet);
+        },
+        delete(id: K) {
+          outer.#matchingSet.delete(id);
+          outer.#cond.state = outer.isActive(outer.#matchingSet);
+        },
+      };
+      this.#matcher.sub(this.#filter, sub, { signal: c.signal });
+      this.#cond.state = this.isActive(this.#matchingSet);  // matchingSet is filled in now
+    };
+
+    this.#cond.addListener(fn, { ...options, setup });
+  }
+
+  removeListener(fn: () => any) {
+    if (this.#cond.removeListener(fn)) {
+      this.#abortSub();
+    }
   }
 
 }
