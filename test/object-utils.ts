@@ -42,6 +42,8 @@ test('readMatchAny', () => {
 
   assert.deepStrictEqual(objectUtils.readMatchAny({} as any, undefined), undefined);
   assert.deepStrictEqual(objectUtils.readMatchAny({ whatever: objectUtils.matchAny } as any, undefined), [undefined]);
+
+  assert.deepStrictEqual(objectUtils.readMatchAny({ a: 'hello' } as any, o), undefined);
 });
 
 test('intersectObjects', () => {

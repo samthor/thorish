@@ -45,11 +45,13 @@ export function readMatchAny<T>(filter: DeepObjectPartial<T>, object: T): any[] 
   // don't filter for undefined, we need to traverse filter
   if (filter === matchAny) {
     return [object];  // found an "any" node, return object here
-  } else if (typeof object === 'object' || object === undefined) {
+  } else if (typeof filter === 'object' && filter) {
+    // only traverse when filter is non-null object, and object is object OR undefined
     let agg: any[] | undefined;
 
+    const traverseInto = (typeof object === 'object' || object === undefined) ? object : undefined;
     for (const key in filter) {
-      const out = readMatchAny(filter[key], object?.[key as any]);
+      const out = readMatchAny(filter[key], traverseInto?.[key as any]);
       if (out) {
         if (agg === undefined) {
           agg = out;
