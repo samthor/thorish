@@ -42,15 +42,14 @@ export function matchPartial<T>(filter: DeepObjectPartial<T>, object: T): boolea
  * the same filter.
  */
 export function readMatchAny<T>(filter: DeepObjectPartial<T>, object: T): any[] | void {
-  if (object === undefined) {
-    // cannot match
-  } else if (filter === matchAny) {
+  // don't filter for undefined, we need to traverse filter
+  if (filter === matchAny) {
     return [object];  // found an "any" node, return object here
-  } else if (typeof object === 'object' && object) {
+  } else if (typeof object === 'object' || object === undefined) {
     let agg: any[] | undefined;
 
     for (const key in filter) {
-      const out = readMatchAny(filter[key], object[key as any]);
+      const out = readMatchAny(filter[key], object?.[key as any]);
       if (out) {
         if (agg === undefined) {
           agg = out;

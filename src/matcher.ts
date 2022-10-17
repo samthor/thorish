@@ -70,6 +70,7 @@ export class Matcher<K, T> {
         const anyValues = readMatchAny(g.filter, prev);
         const updatedAnyValues = readMatchAny(g.filter, value);
         triggerChange = !isDeepStrictEqual(anyValues, updatedAnyValues);
+        console.info('triggerChange because hasAny', { triggerChange });
       }
 
       if (triggerChange || !afterGroupsSet.delete(g)) {
@@ -160,7 +161,7 @@ export class Matcher<K, T> {
 }
 
 
-export interface Group<K> {
+export interface Group {
   active(): boolean;
   addListener(fn: (state: boolean) => any, options?: ConditionOptions): boolean;
   removeListener(fn: (state: boolean) => any): boolean;
@@ -171,12 +172,16 @@ export interface Group<K> {
  * Provides a wrapper for a number of {@link Group} instances. By default, this is active when
  * all of the passed groups (including zero) are active, an AND filter.
  */
-export class CombineGroup<K> implements Group<K> {
-  #groups: Group<K>[];
+export class CombineGroup implements Group {
+  #groups: Group[];
   #cond: Condition;
-  #isActive: (groups: Group<K>[]) => boolean;
+  #isActive: (groups: Group[]) => boolean;
 
-  constructor(groups: Group<K>[], isActive?: (groups: Group<K>[]) => boolean) {
+  static create(groups: Group[], isActive?: (groups: Group[]) => boolean) {
+    return new this(groups, isActive);
+  }
+
+  constructor(groups: Group[], isActive?: (groups: Group[]) => boolean) {
     groups = groups.slice();
     this.#groups = groups;
 
@@ -231,13 +236,17 @@ export class CombineGroup<K> implements Group<K> {
  * By default, the group is active if any item matches the filter, however subclasses can change
  * this behavior by overriding {@link MatcherGroup#isActive}.
  */
-export class MatcherGroup<K, T> implements Group<K> {
+export class MatcherGroup<K, T> implements Group {
   #filter: Filter<T>;
   #matcher: Matcher<K, T>;
   #signal: AbortSignal | undefined;
 
   #matchingSet = new Set<K>();
   #cond: Condition;
+
+  static create<K, T>(filter: Filter<T>, matcher: Matcher<K, T>, options?: AbortSignalArgs) {
+    return new this(filter, matcher, options);
+  }
 
   constructor(filter: Filter<T>, matcher: Matcher<K, T>, options?: AbortSignalArgs) {
     this.#filter = filter;

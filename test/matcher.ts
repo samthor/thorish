@@ -71,6 +71,28 @@ test('matcher sub init', () => {
   assert.strictEqual(s.size, 1);
 });
 
+test('matcher sub any', () => {
+  const m = new Matcher<string, any>();
+
+  m.set('foo', { a: 1 });
+
+  const calls: string[] = [];
+  m.sub({ a: matchAny }, {
+    add(k) {
+      calls.push('add:' + k);
+    },
+    delete(k) {
+      calls.push('delete:' + k);
+    },
+  });
+  assert.deepStrictEqual(calls, ['add:foo']);
+
+//  m.delete('foo');
+  m.set('foo', { a: 2 });
+  assert.deepStrictEqual(calls, ['add:foo', 'delete:foo', 'add:foo']);
+  
+});
+
 test('group', () => {
   const m = new Matcher<string, any>();
   const mg = new MatcherGroup<string, any>({ x: matchAny }, m);
