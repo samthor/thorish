@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { Matcher, matchAny } from '../src/matcher';
+import { Matcher, matchAny, MatcherGroup, CombineGroup } from '../src/matcher';
 
 test('matcher match helpers', () => {
   const m = new Matcher<string, any>();
@@ -28,7 +28,7 @@ test('read', () => {
   m.set('qqq', { x: 1, y: 2, z: { a: 3, b: 4 } });
   assert.deepStrictEqual(m.read(['qqq']), { x: 1, y: 2, z: { a: 3, b: 4 } });
 
-  m.set('bar', { x: 2, y: 3, z: { a: 3, b: 100 }});
+  m.set('bar', { x: 2, y: 3, z: { a: 3, b: 100 } });
   assert.deepStrictEqual(m.read(['bar', 'qqq']), { z: { a: 3 } });
 
   assert.deepStrictEqual(m.read(['bar', 'qqq2']), undefined);
@@ -69,4 +69,71 @@ test('matcher sub init', () => {
   const s = new Set<string>();
   m.sub({ qqq: matchAny }, s);
   assert.strictEqual(s.size, 1);
+});
+
+test('group', () => {
+  const m = new Matcher<string, any>();
+  const mg = new MatcherGroup<string, any>({ x: matchAny }, m);
+
+  let calls = 0;
+  const listener = () => {
+    ++calls;
+  };
+  mg.addListener(listener);
+
+  m.set('hello', { x: 123 });
+  assert.strictEqual(calls, 1);
+  assert.deepStrictEqual([...mg.matching()], ['hello']);
+
+  m.set('hello2', { y: 456 });
+  assert.strictEqual(calls, 1);
+
+  m.set('hello3-match', { x: 123 });
+  assert.strictEqual(calls, 1);  // still active
+  assert.deepStrictEqual([...mg.matching()], ['hello', 'hello3-match']);
+
+  mg.removeListener(listener);
+  assert.deepStrictEqual([...mg.matching()], ['hello', 'hello3-match']);
+
+  m.delete('hello');
+  m.delete('hello3-match');
+  assert.deepStrictEqual([...mg.matching()], []);
+});
+
+test('combine', () => {
+  const m = new Matcher<string, any>();
+
+  const mg1 = new MatcherGroup<string, any>({ x: 1 }, m);
+  const mg2 = new MatcherGroup<string, any>({ y: 1 }, m);
+
+  const and = new CombineGroup([mg1, mg2]);
+
+  mg1.addListener(() => console.info('mg1 pass', { x: 1 }));
+  mg2.addListener(() => console.info('mg2 pass', { y: 1 }));
+
+  let calls = 0;
+  and.addListener(() => {
+    console.info('AND called');
+    ++calls;
+  });
+
+  console.info('listeners setup', calls);
+
+  m.set('a', { x: 1 });
+  assert.strictEqual(and.active(), false, 'not active, only one condition hit');
+  assert.strictEqual(calls, 0);
+
+  m.set('a', { x: 1, y: 1 });
+  assert.strictEqual(and.active(), true, 'now active');
+  assert.strictEqual(calls, 1);
+
+  m.set('a', { y: 1 });
+  assert.strictEqual(mg1.active(), false);
+  assert.strictEqual(mg2.active(), true);
+  assert.strictEqual(and.active(), false, 'should have cleared active state');
+  assert.strictEqual(calls, 1);
+
+  m.set('b', { x: 1 });
+  assert.strictEqual(and.active(), true, 'should be unified a/b causing active');
+  assert.strictEqual(calls, 2);
 });

@@ -1,6 +1,6 @@
 
-import { Condition } from './cond';
-import { DeepObjectPartial, readMatchAny, matchPartial, intersectObjects, intersectManyObjects, deepFreeze } from './object-utils';
+import { Condition, ConditionListener, ConditionOptions } from './cond';
+import { DeepObjectPartial, readMatchAny, matchPartial, intersectManyObjects, deepFreeze } from './object-utils';
 import { isDeepStrictEqual } from './support/index';
 import type { AbortSignalArgs } from './types';
 export { matchAny } from './object-utils';
@@ -162,53 +162,64 @@ export class Matcher<K, T> {
 
 export interface Group<K> {
   active(): boolean;
-  addListener(fn: () => any, options?: AbortSignalArgs): void;
-  removeListener(fn: () => any);
+  addListener(fn: (state: boolean) => any, options?: ConditionOptions): boolean;
+  removeListener(fn: (state: boolean) => any): boolean;
 }
 
 
+/**
+ * Provides a wrapper for a number of {@link Group} instances. By default, this is active when
+ * all of the passed groups (including zero) are active, an AND filter.
+ */
 export class CombineGroup<K> implements Group<K> {
   #groups: Group<K>[];
-  #cond: Condition = new Condition();
-  #listener: () => void;
+  #cond: Condition;
+  #isActive: (groups: Group<K>[]) => boolean;
 
-  constructor(groups: Group<K>[]) {
-    this.#groups = groups.slice();
+  constructor(groups: Group<K>[], isActive?: (groups: Group<K>[]) => boolean) {
+    groups = groups.slice();
+    this.#groups = groups;
 
-    this.#listener = () => {
-      this.#cond.state = this.isActive(this.#groups);
-    };
-  }
-
-  protected isActive(groups: Group<K>[]) {
-    // AND
-    for (const g of groups) {
-      if (!g.active()) {
-        return false;
+    this.#isActive = isActive ?? (() => {
+      for (const g of groups) {
+        if (!g.active()) {
+          return false;
+        }
       }
-    }
-    return true;
+      return true;
+    });
+
+    const listener = () => {
+      this.#cond.state = this.#isActive(groups);
+    };
+
+    this.#cond = new class extends Condition {
+
+      setup() {
+        listener();  // might not be called otherwise
+        groups.forEach((g) => g.addListener(listener, { both: true }));
+      }
+
+      teardown() {
+        groups.forEach((g) => g.removeListener(listener));
+      }
+
+    };
   }
 
   active(): boolean {
     if (this.#cond.observed()) {
       return this.#cond.state;
     }
-    return this.isActive(this.#groups);
+    return this.#isActive(this.#groups);
   }
 
-  addListener(fn: () => any, options?: AbortSignalArgs): void {
-    const setup = () => {
-      this.#groups.forEach((g) => g.addListener(this.#listener));
-      this.#cond.state = this.isActive(this.#groups);
-    };
-    this.#cond.addListener(fn, { ...options, setup });
+  addListener(fn: ConditionListener, options?: ConditionOptions): boolean {
+    return this.#cond.addListener(fn, options);
   }
 
-  removeListener(fn: () => any) {
-    if (this.#cond.removeListener(fn)) {
-      this.#groups.forEach((g) => g.removeListener(this.#listener));
-    }
+  removeListener(fn: ConditionListener): boolean {
+    return this.#cond.removeListener(fn);
   }
 }
 
@@ -226,7 +237,6 @@ export class MatcherGroup<K, T> implements Group<K> {
   #signal: AbortSignal | undefined;
 
   #matchingSet = new Set<K>();
-  #abortSub = () => { };
   #cond: Condition;
 
   constructor(filter: Filter<T>, matcher: Matcher<K, T>, options?: AbortSignalArgs) {
@@ -234,12 +244,43 @@ export class MatcherGroup<K, T> implements Group<K> {
     this.#matcher = matcher;
     this.#signal = options?.signal;
 
-    // if this is fired, abort the current sub and clear listeners
-    this.#signal?.addEventListener('abort', () => {
-      this.#abortSub();
-    });
+    let abortCurrentSubscription = () => { };
 
-    this.#cond = new Condition(options);
+    // if this is fired, abort the current sub and clear listeners
+    this.#signal?.addEventListener('abort', () => abortCurrentSubscription());
+
+    const outer = this;
+    this.#cond = new class extends Condition {
+
+      setup() {
+        const c = new AbortController();
+        c.signal.addEventListener('abort', () => outer.#matchingSet.clear());
+        abortCurrentSubscription = () => c.abort();
+
+        if (outer.#matchingSet.size) {
+          throw new Error(`should not have anything in set on setup: ${outer.#matchingSet}`);
+        }
+        this.state = outer.isActive(outer.#matchingSet);  // nothing to start with
+
+        const cond = this;
+        const sub = {
+          add(id: K) {
+            outer.#matchingSet.add(id);
+            cond.state = outer.isActive(outer.#matchingSet);
+          },
+          delete(id: K) {
+            outer.#matchingSet.delete(id);
+            cond.state = outer.isActive(outer.#matchingSet);
+          },
+        };
+        matcher.sub(filter, sub, { signal: c.signal });
+      }
+
+      teardown() {
+        abortCurrentSubscription();
+      }
+
+    }(options);
   }
 
   protected isActive(matchingKeys: ReadonlySet<K>) {
@@ -262,34 +303,12 @@ export class MatcherGroup<K, T> implements Group<K> {
     return this.#matcher.matchAll(this.#filter);
   }
 
-  addListener(fn: () => any, options?: AbortSignalArgs) {
-    const setup = () => {
-      const c = new AbortController();
-      c.signal.addEventListener('abort', () => this.#matchingSet.clear());
-      this.#abortSub = () => c.abort();
-  
-      const outer = this;
-      const sub = {
-        add(id: K) {
-          outer.#matchingSet.add(id);
-          outer.#cond.state = outer.isActive(outer.#matchingSet);
-        },
-        delete(id: K) {
-          outer.#matchingSet.delete(id);
-          outer.#cond.state = outer.isActive(outer.#matchingSet);
-        },
-      };
-      this.#matcher.sub(this.#filter, sub, { signal: c.signal });
-      this.#cond.state = this.isActive(this.#matchingSet);  // matchingSet is filled in now
-    };
-
-    this.#cond.addListener(fn, { ...options, setup });
+  addListener(fn: ConditionListener, options?: AbortSignalArgs): boolean {
+    return this.#cond.addListener(fn, options);
   }
 
-  removeListener(fn: () => any) {
-    if (this.#cond.removeListener(fn)) {
-      this.#abortSub();
-    }
+  removeListener(fn: ConditionListener): boolean {
+    return this.#cond.removeListener(fn);
   }
 
 }

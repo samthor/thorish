@@ -1,11 +1,32 @@
-import { AbortSignalArgs } from "./types";
+import type { AbortSignalArgs } from './types';
 
 
 /**
- * TODO: controls a boolean which fires begin/end listeners.
+ * The options passed to {@link Condition} when adding a listener.
+ */
+export type ConditionOptions = AbortSignalArgs & {
+
+  /**
+   * Whether to call the listener for both state begin and state end, as opposed to just begin.
+   *
+   * @default false
+   */
+  both?: boolean;
+
+};
+
+
+/**
+ * A listener added to {@link Condition}.
+ */
+export type ConditionListener = (state: boolean) => any;
+
+
+/**
+ * Controls a boolean which fires begin/end listeners on its state change.
  */
 export class Condition {
-  #listeners = new Set<() => any>();
+  #listeners = new Map<ConditionListener, boolean>();
   #signal: AbortSignal | undefined;
   #state = false;
 
@@ -16,36 +37,79 @@ export class Condition {
     this.#signal = options?.signal;
   }
 
-  set state(v) {
+  get state(): boolean {
+    return this.#state;
+  }
+
+  set state(v: boolean) {
+    v = !!v;  // ensure boolean-ness
     if (this.#state === v) {
       return;
     }
     this.#state = v;
-    if (v) {
-      this.#listeners.forEach((fn) => fn());
+
+    for (const [fn, both] of this.#listeners.entries()) {
+      if (both || v) {
+        fn(v);
+      }
     }
   }
 
+  /**
+   * Does this {@link Condition} currently have any listeners.
+   */
   observed() {
     return this.#listeners.size !== 0;
   }
 
-  addListener(fn: () => any, options?: AbortSignalArgs & { setup(): any }): boolean {
-    if (this.#signal?.aborted || options?.signal?.aborted) {
+  /**
+   * For subclasses to override. The actions to take when the first listener is added.
+   */
+  protected setup() {
+  }
+
+  /**
+   * For subclasses to override. The actions to take when the last listener is removed, or this
+   * {@link Condition} is aborted.
+   */
+  protected teardown() {
+  }
+
+  /**
+   * Adds a listener to this {@link Condition}.
+   */
+  addListener(fn: ConditionListener, options?: ConditionOptions): boolean {
+    if (this.#signal?.aborted || options?.signal?.aborted || this.#listeners.has(fn)) {
       return false;
     }
     const first = this.#listeners.size === 0;
-    this.#listeners.add(fn);
-    options?.signal?.addEventListener('abort', () => this.#listeners.delete(fn));
-    return first;
+    this.#listeners.set(fn, options?.both ?? false);
+
+    // nb. If the same function is added and removed many times, many signals may point to its
+    // removal! This is no different then EventTarget though, which has the same problem.
+    options?.signal?.addEventListener('abort', () => this.removeListener(fn));
+
+    if (first) {
+      this.setup();
+    }
+    return true;
   }
 
-  removeListener(fn: () => any): boolean {
+  /**
+   * Removes a listener from this {@link Condition}.
+   */
+  removeListener(fn: ConditionListener): boolean {
     if (this.#listeners.size === 0) {
       return false;
     }
-    this.#listeners.delete(fn);
-    return this.#listeners.size === 0;
+    if (!this.#listeners.delete(fn)) {
+      return false;
+    }
+
+    if (this.#listeners.size === 0) {
+      this.teardown();
+    }
+    return true;
   }
 
 }
