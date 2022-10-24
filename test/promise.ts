@@ -8,3 +8,13 @@ test('setTimeout', async () => {
   await t;
   assert.ok(true);
 });
+
+test('spliceNextPromise', async () => {
+  const unresolvedPromise = Promise.race([]);
+  const arr = [unresolvedPromise, unresolvedPromise, Promise.resolve('this_one'), unresolvedPromise];
+  assert.strictEqual(arr.length, 4);
+
+  const out = await promise.spliceNextPromise(arr);
+  assert.strictEqual(out, 'this_one');
+  assert.strictEqual(arr.length, 3);
+});

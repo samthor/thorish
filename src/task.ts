@@ -3,8 +3,17 @@ import { WorkQueue } from './queue';
 
 
 export type TaskType<T> = {
+
+  /**
+   * Resolves when the passed {@link AbortSignal} is aborted, or rejects if the task runner throws.
+   */
   done: Promise<void>;
+
+  /**
+   * Helper to queue items into the {@link workTask}.
+   */
   queue: (arg: T, ...rest: T[]) => void;
+
 }
 
 
@@ -30,8 +39,9 @@ export type TaskOptions = {
 
 /**
  * Runs a task forever (unless it crashes). This enables a "single-threaded" task to run over items
- * pushed into it. Errors throws inside the task runner will result in the returned {@link Promise}
- * rejecting.
+ * pushed into it, possibly with some delaying/deduping.
+ *
+ * Errors throws inside the task runner will result in the returned {@link Promise} rejecting.
  *
  * Returns a function which triggers the task for new items.
  */
@@ -60,7 +70,7 @@ export function workTask<T = void>(task: (...args: T[]) => void | Promise<void>,
 
       let all: Iterable<T>;
       if (unique) {
-        all = new Set(wq).keys();
+        all = new Set(wq);
       } else {
         all = [...wq];
       }

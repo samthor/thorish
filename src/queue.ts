@@ -78,7 +78,9 @@ export class WorkQueue<T> {
     try {
       return this.#pending.push(...items);
     } finally {
-      this.#releasePending();
+      if (items.length) {
+        this.#releasePending();
+      }
     }
   }
 
@@ -93,7 +95,9 @@ export class WorkQueue<T> {
     try {
       return this.#pending.unshift(...items);
     } finally {
-      this.#releasePending();
+      if (items.length) {
+        this.#releasePending();
+      }
     }
   }
 

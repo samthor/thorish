@@ -87,3 +87,24 @@ export function promiseForEvent<X extends Event>(target: EventTarget, eventName:
   });
 }
 
+
+/**
+ * Helper which finds the next completed promise (using {@link Promise.race}) from the given array,
+ * removing it from the passed array. This is O(n) with the number of elements, as each element
+ * must be wrapped in an additional {@link Promise} that includes the index.
+ *
+ * Returns `undefined` if the array was empty. This is unlike {@link Promise.race}, which will wait
+ * forever.
+ */
+export async function spliceNextPromise<T>(arr: Promise<T>[]): Promise<T | undefined> {
+  if (!arr.length) {
+    return undefined;
+  }
+
+  const internal = arr.map((x, i) => x.then((ret) => ({ret, i})));
+  const next = await Promise.race(internal);
+
+  arr.splice(next.i, 1);
+
+  return next.ret;
+}
