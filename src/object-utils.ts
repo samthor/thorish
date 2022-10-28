@@ -1,3 +1,4 @@
+import { structuredIshClone } from "./object-structured-clone.js";
 
 
 /**
@@ -104,7 +105,7 @@ export function intersectManyObjects<T>(of: Iterable<T>): DeepObjectPartial<T> |
 
   let ir = iter.next();
   if (ir.done) {
-    return structuredClone(out);  // only had 1 value, return clone
+    return structuredIshClone(out);  // only had 1 value, return clone
   }
 
   for (; ;) {

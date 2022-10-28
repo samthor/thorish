@@ -1,7 +1,8 @@
 
 import { Condition, ConditionListener, ConditionOptions } from './cond.js';
+import { structuredIshClone } from './object-structured-clone.js';
 import { DeepObjectPartial, readMatchAny, matchPartial, intersectManyObjects, deepFreeze } from './object-utils.js';
-import { isDeepStrictEqual } from './support/index.js';
+import { isArrayEqualIsh } from './support/index.js';
 import type { AbortSignalArgs } from './types.js';
 export { matchAny } from './object-utils.js';
 
@@ -39,7 +40,7 @@ export class Matcher<K, T> {
   #groups = new Map<GroupKey<T>, MatcherSub<K>>();
 
   get(id: K): T | undefined {
-    return structuredClone(this.#objects.get(id));
+    return structuredIshClone(this.#objects.get(id));
   }
 
   /**
@@ -55,7 +56,7 @@ export class Matcher<K, T> {
     if (value === undefined) {
       this.#objects.delete(id);
     } else {
-      this.#objects.set(id, structuredClone(value));
+      this.#objects.set(id, structuredIshClone(value));
     }
 
     const afterGroupsSet: Set<GroupKey<T>> = value === undefined
@@ -69,7 +70,7 @@ export class Matcher<K, T> {
       if (g.hasAny) {
         const anyValues = readMatchAny(g.filter, prev);
         const updatedAnyValues = readMatchAny(g.filter, value);
-        triggerChange = !isDeepStrictEqual(anyValues, updatedAnyValues);
+        triggerChange = !isArrayEqualIsh(anyValues, updatedAnyValues);
         console.info('triggerChange because hasAny', { triggerChange });
       }
 

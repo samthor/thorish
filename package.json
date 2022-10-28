@@ -28,8 +28,8 @@
   },
   "imports": {
     "#support": {
-      "node": "./src/support/node.ts",
-      "browser": "./src/support/browser.ts"
+      "node": "./src/support/node.js",
+      "browser": "./src/support/browser.js"
     }
   },
   "name": "thorish",
