@@ -1,6 +1,6 @@
 
 import { Condition, ConditionListener, ConditionOptions } from './cond.js';
-import { structuredIshClone } from './object-structured-clone.js';
+import { structuredIshClone } from './support/index.js';
 import { DeepObjectPartial, readMatchAny, matchPartial, intersectManyObjects, deepFreeze } from './object-utils.js';
 import { isArrayEqualIsh } from './support/index.js';
 import type { AbortSignalArgs } from './types.js';

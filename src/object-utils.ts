@@ -1,4 +1,3 @@
-import { structuredIshClone } from "./object-structured-clone.js";
 
 
 /**
@@ -68,7 +67,8 @@ export function readMatchAny<T>(filter: DeepObjectPartial<T>, object: T): any[] 
 
 
 /**
- * Return the parts of a/b that are the same. Otherwise, returns `undefined`.
+ * Return the parts of a/b that are the same. Otherwise, returns `undefined`. If a/b are the same
+ * object, returns that object (same ref).
  */
 export function intersectObjects<T>(a: T | DeepObjectPartial<T> | undefined, b: T | DeepObjectPartial<T> | undefined): DeepObjectPartial<T> | undefined {
   if (a === b) {
@@ -89,7 +89,8 @@ export function intersectObjects<T>(a: T | DeepObjectPartial<T> | undefined, b: 
 
 
 /**
- * Intersect many objects together (0-n objects). May return `undefined`.
+ * Intersect many objects together (0-n objects). May return `undefined`. If only one unique object
+ * is passed, it will be directly returned (same ref).
  */
 export function intersectManyObjects<T>(of: Iterable<T>): DeepObjectPartial<T> | undefined {
   const iter = of[Symbol.iterator]();
@@ -105,7 +106,7 @@ export function intersectManyObjects<T>(of: Iterable<T>): DeepObjectPartial<T> |
 
   let ir = iter.next();
   if (ir.done) {
-    return structuredIshClone(out);  // only had 1 value, return clone
+    return out;  // only one value
   }
 
   for (; ;) {

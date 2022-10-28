@@ -95,6 +95,15 @@ function internalMemoize<T, R>(weak: boolean, fn: (...args: T[]) => R, args: T[]
 
 
 /**
+ * Purge any previously memoized calls for a function passed to {@link memoize} or
+ * {@link memoizeWeak}.
+ */
+export function purgeMemoize(fn: Function) {
+  memoizeMap.delete(fn);
+}
+
+
+/**
  * Memoize a call to the passed {@link Function}. Matching calls to this helper will return the
  * same result.
  */
@@ -102,9 +111,11 @@ export function memoize<T, R>(fn: (...args: T[]) => R, ...args: T[]): R {
   return internalMemoize(false, fn, args);
 }
 
+
 /**
  * Memoize a call to the passed {@link Function}. Matching calls to this helper will return the
- * same result. This is as {@link memoize}, but stores the arguments weakly.
+ * same result, however, object arguments are held weakly. If any object argument is released,
+ * then that specific call will be forgotten.
  */
 export function memoizeWeak<T, R>(fn: (...args: T[]) => R, ...args: T[]): R {
   return internalMemoize(true, fn, args);

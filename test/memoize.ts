@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { memoize } from '../src/memoize.js';
+import { memoize, purgeMemoize } from '../src/memoize.js';
 
 test('memoize', async () => {
   let local = 0;
@@ -22,4 +22,8 @@ test('memoize', async () => {
   assert.strictEqual(m4, 1);
   assert.strictEqual(m5_100, 102);
   assert.strictEqual(m6_200, 203);
+
+  assert.strictEqual(memoize(helper, 100), 102);
+  purgeMemoize(helper);
+  assert.strictEqual(memoize(helper, 100), 104);
 });
