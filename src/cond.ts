@@ -1,4 +1,4 @@
-import type { AbortSignalArgs } from './types';
+import type { AbortSignalArgs } from './types.js';
 
 
 /**

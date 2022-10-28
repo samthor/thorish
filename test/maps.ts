@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import * as maps from '../src/maps';
+import * as maps from '../src/maps.js';
 
 test('CountSet', () => {
   const c = new maps.CountSet<string>();

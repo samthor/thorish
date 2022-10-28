@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { workTask } from '../src';
+import { workTask } from '../src/task.js';
 
 test('task', async () => {
   const c = new AbortController();

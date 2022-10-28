@@ -1,9 +1,9 @@
 
-import { Condition, ConditionListener, ConditionOptions } from './cond';
-import { DeepObjectPartial, readMatchAny, matchPartial, intersectManyObjects, deepFreeze } from './object-utils';
-import { isDeepStrictEqual } from './support/index';
-import type { AbortSignalArgs } from './types';
-export { matchAny } from './object-utils';
+import { Condition, ConditionListener, ConditionOptions } from './cond.js';
+import { DeepObjectPartial, readMatchAny, matchPartial, intersectManyObjects, deepFreeze } from './object-utils.js';
+import { isDeepStrictEqual } from './support/index.js';
+import type { AbortSignalArgs } from './types.js';
+export { matchAny } from './object-utils.js';
 
 
 /**

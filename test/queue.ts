@@ -1,7 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { WorkQueue } from '../src/queue';
-import { wrapTrigger } from '../src/promise';
+import { WorkQueue } from '../src/queue.js';
+import { wrapTrigger } from '../src/promise.js';
 
 test('queue', async () => {
   const wq = new WorkQueue<number>();

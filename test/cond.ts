@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { Condition } from '../src/cond';
+import { Condition } from '../src/cond.js';
 
 test('cond', () => {
   const c = new Condition();

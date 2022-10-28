@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { memoize } from '../src/memoize';
+import { memoize } from '../src/memoize.js';
 
 test('memoize', async () => {
   let local = 0;

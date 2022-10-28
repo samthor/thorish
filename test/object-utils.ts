@@ -1,7 +1,7 @@
 
 import test from 'node:test';
 import * as assert from 'node:assert';
-import * as objectUtils from '../src/object-utils';
+import * as objectUtils from '../src/object-utils.js';
 
 test('matchPartial', () => {
   const o = {

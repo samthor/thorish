@@ -1,5 +1,5 @@
-import { isSignalAbortException, timeout, withSignal } from './promise';
-import { WorkQueue } from './queue';
+import { isSignalAbortException, timeout, withSignal } from './promise.js';
+import { WorkQueue } from './queue.js';
 
 
 export type TaskType<T> = {
