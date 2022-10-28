@@ -1,4 +1,6 @@
 
+import { DOMException } from './support/index.js';
+
 /**
  * Wraps a trigger function (e.g., {@link setTimeout} or {@link requestAnimationFrame}) and returns
  * a {@link Promise} that resolves when it is fired.

@@ -1,7 +1,7 @@
 
-import { isDeepStrictEqual } from 'node:util';
-export { isDeepStrictEqual, isDeepStrictEqual as isArrayEqualIsh };
+export { isDeepStrictEqual as isArrayEqualIsh } from 'node:util';
 
+// Node 16 doesn't have DOMException
 export const DOMException = global.DOMException ? global.DOMException : class DOMException extends Error {
   name: string;
 
