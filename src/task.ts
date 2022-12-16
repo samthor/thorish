@@ -1,4 +1,4 @@
-import { isSignalAbortException, timeout, withSignal } from './promise.js';
+import { isSignalAbortException, promiseForSignal, timeout } from './promise.js';
 import { WorkQueue } from './queue.js';
 
 
@@ -39,7 +39,8 @@ export type TaskOptions = {
 
 /**
  * Runs a task forever (unless it crashes). This enables a "single-threaded" task to run over items
- * pushed into it, possibly with some delaying/deduping.
+ * pushed into it, possibly with some delaying/deduping. It aggregates the inputs and passes them
+ * into the task runner to be handled all at once.
  *
  * Errors throws inside the task runner will result in the returned {@link Promise} rejecting.
  *
@@ -54,13 +55,14 @@ export function workTask<T = void>(task: (...args: T[]) => void | Promise<void>,
     signal,
     unique = false,
   } = options;
+  const signalPromise = promiseForSignal(signal);
 
   const done = (async () => {
     for (; ;) {
       try {
-        await withSignal(signal, timeout(min));
-        await withSignal(signal, wq.wait());
-        await withSignal(signal, timeout(delay));
+        await Promise.race([signalPromise, timeout(min)]);
+        await Promise.race([signalPromise, wq.wait()]);
+        await Promise.race([signalPromise, timeout(delay)]);
       } catch (e) {
         if (isSignalAbortException(e)) {
           return;  // aborted, drop tasks

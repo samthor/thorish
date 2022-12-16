@@ -34,11 +34,15 @@ export class WorkQueue<T> {
   /**
    * Iterates through the items in this queue _forever_, waiting for more items to appear.
    */
-  async *[Symbol.asyncIterator]() {
+  async *[Symbol.asyncIterator](): AsyncGenerator<T, void, void> {
     for (; ;) {
       await this.wait();
       yield this.#pending.shift()!;
     }
+  }
+
+  asyncGenerator() {
+    return this[Symbol.asyncIterator]();
   }
 
   /**

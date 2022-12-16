@@ -1,5 +1,6 @@
 import './array.js';
 import './cond.js';
+import './generator.js';
 import './maps.js';
 import './matcher.js';
 import './memoize.js';
