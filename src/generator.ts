@@ -1,6 +1,7 @@
-import { isSignalAbortException, promiseForSignal, resolvable, unresolvedPromise } from './promise.js';
+import { resolvable, unresolvedPromise } from './promise.js';
 import { AbortSignalArgs } from './types.js';
 import type { WorkQueue } from './queue.js';
+import { promiseForSignal, symbolAbortSignal } from './internal.js';
 
 /**
  * Combines the N passed async generators into a single generator which yields items in order,
@@ -12,7 +13,9 @@ import type { WorkQueue } from './queue.js';
  * This returns all return values of the passed generators only once all are done. This does not
  * support the `TNext` template.
  */
-export async function* combineAsyncGenerators<T, Y = void>(gen: (AsyncGenerator<T, Y, void> | Generator<T, Y, void>)[]): AsyncGenerator<{ index: number, value: T }, Y[], void> {
+export async function* combineAsyncGenerators<T, Y = void>(
+  gen: (AsyncGenerator<T, Y, void> | Generator<T, Y, void>)[]
+): AsyncGenerator<{ index: number, value: T }, Y[], void> {
   gen = gen.slice();  // copy
 
   const buildNext = async (index: number) => {
@@ -30,16 +33,20 @@ export async function* combineAsyncGenerators<T, Y = void>(gen: (AsyncGenerator<
 
     if (next.res.done) {
       // We put an unresolvable promise here so it'll never resolve again.
-      nexts[next.index] = new Promise(() => { });
+      nexts[next.index] = unresolvedPromise;
       doneValues[next.index] = next.res.value;
       ++doneCount;
-      continue;
+
+    } else {
+      // TODO: tsc is confused
+      const value = next.res.value as T;
+
+      // We got a value on this generator! Reset it for next time.
+      nexts[next.index] = buildNext(next.index);
+
+      yield { index: next.index, value };
     }
 
-    // We got a value on this generator! Reset it for next time.
-    nexts[next.index] = buildNext(next.index);
-
-    yield { index: next.index, value: next.res.value };
   }
 
   return doneValues;
@@ -61,7 +68,7 @@ export async function* asyncGeneratorForHandler<T>(handler: () => Promise<T>, ar
       const p = handler();
       v = await Promise.race([signalPromise, p]);
     } catch (e) {
-      if (isSignalAbortException(e)) {
+      if (e === symbolAbortSignal) {
         return;
       }
       throw e;
@@ -125,7 +132,7 @@ export function asyncGeneratorQueue<T, Y = void>(): AsyncGeneratorQueueReturn<T,
   };
 
   const generator = (async function* (): AsyncGenerator<T, Y, void> {
-    for (;;) {
+    for (; ;) {
       await promise;
 
       while (pending.length) {

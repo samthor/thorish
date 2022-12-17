@@ -46,54 +46,18 @@ export function resolvable<T = void>(): {
 
 
 /**
- * Returns a {@link Promise} that rejects with a {@link DOMException} when the passed
- * {@link AbortSignal} aborts (or rejected immediately, if already aborted).
- */
-export async function promiseForSignal(signal?: AbortSignal): Promise<never> {
-  if (signal === undefined) {
-    return unresolvedPromise;
-  } else if (signal.throwIfAborted) {
-    // only exists in fairly recent DOM
-    signal.throwIfAborted();
-  } else if (signal.aborted) {
-    if (signal.reason === undefined) {
-      throw new DOMException('AbortError', 'This operation was aborted');
-    }
-    // This matches `throwIfAborted`.
-    throw signal.reason;
-  }
-  return new Promise<never>((_, reject) => {
-    signal.addEventListener('abort', () =>
-      reject(new DOMException('AbortError')),
-    );
-  });
-}
-
-
-/**
- * Checks if the passed var is a {@link DOMException} of message `"AbortError"`.
- *
- * TODO(samthor): This is used a bit but isn't that useful as a signal can just throw its random
- * `.reason` prop, which can literally be a string or whatever.
- */
-export function isSignalAbortException(e: any): e is DOMException {
-  return e instanceof DOMException && e.message === 'AbortError';
-}
-
-
-/**
  * Returns a {@link Promise} that resolves after a the first event of the given name is fired.
  *
  * This doesn't correctly infer the type of the {@link Event}, but you can specify it via template.
+ *
+ * If the {@link AbortSignal} is aborted, this will reject with an unspecified {@link Error}.
  */
 export function promiseForEvent<X extends Event = Event>(target: EventTarget, eventName: string, options: Partial<{ passive: boolean, signal: AbortSignal }> = {}): Promise<X> {
   if (options.signal?.aborted) {
-    return Promise.reject(new DOMException('AbortError'));
+    return Promise.reject();
   }
   return new Promise<X>((resolve, reject) => {
-    options.signal?.addEventListener('abort', () =>
-      reject(new DOMException('AbortError')),
-    );
+    options.signal?.addEventListener('abort', () => reject());
     target.addEventListener(eventName, (e) => resolve(e as X), { ...options, once: true });
   });
 }
@@ -101,8 +65,8 @@ export function promiseForEvent<X extends Event = Event>(target: EventTarget, ev
 
 /**
  * Helper which finds the next completed promise (using {@link Promise.race}) from the given array,
- * removing it from the passed array. This is O(n) with the number of elements, as each element
- * must be wrapped in an additional {@link Promise} that includes the index.
+ * removing it from the passed array in-place. This is O(n) with the number of elements, as each
+ * element must be wrapped in an additional {@link Promise} that includes the index.
  *
  * Returns `undefined` if the array was empty. This is unlike {@link Promise.race}, which will wait
  * forever.

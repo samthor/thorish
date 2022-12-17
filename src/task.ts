@@ -1,4 +1,5 @@
-import { isSignalAbortException, promiseForSignal, timeout } from './promise.js';
+import { promiseForSignal, symbolAbortSignal } from './internal.js';
+import { timeout } from './promise.js';
 import { WorkQueue } from './queue.js';
 
 
@@ -64,7 +65,7 @@ export function workTask<T = void>(task: (...args: T[]) => void | Promise<void>,
         await Promise.race([signalPromise, wq.wait()]);
         await Promise.race([signalPromise, timeout(delay)]);
       } catch (e) {
-        if (isSignalAbortException(e)) {
+        if (e === symbolAbortSignal) {
           return;  // aborted, drop tasks
         }
         throw e;

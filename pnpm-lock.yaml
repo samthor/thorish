@@ -1,16 +1,16 @@
 lockfileVersion: 5.4
 
 specifiers:
-  '@types/node': ^18.7.18
+  '@types/node': ^18.11.16
   esbuild: ^0.15.9
   tsx: ^3.9.0
-  typescript: ^4.8.4
+  typescript: ^4.9.4
 
 devDependencies:
-  '@types/node': 18.7.18
+  '@types/node': 18.11.16
   esbuild: 0.15.9
   tsx: 3.9.0
-  typescript: 4.8.4
+  typescript: 4.9.4
 
 packages:
 
@@ -53,8 +53,8 @@ packages:
     dev: true
     optional: true
 
-  /@types/node/18.7.18:
-    resolution: {integrity: sha512-m+6nTEOadJZuTPkKR/SYK3A2d7FZrgElol9UP1Kae90VVU4a6mxnPuLiIW1m4Cq4gZ/nWb9GrdVXJCoCazDAbg==}
+  /@types/node/18.11.16:
+    resolution: {integrity: sha512-6T7P5bDkRhqRxrQtwj7vru+bWTpelgtcETAZEUSdq0YISKz8WKdoBukQLYQQ6DFHvU9JRsbFq0JH5C51X2ZdnA==}
     dev: true
 
   /buffer-from/1.1.2:
@@ -306,8 +306,8 @@ packages:
       fsevents: 2.3.2
     dev: true
 
-  /typescript/4.8.4:
-    resolution: {integrity: sha512-QCh+85mCy+h0IGff8r5XWzOVSbBO+KfeYrMQh7NJ58QujwcE22u+NUSmUxqF+un70P9GXKxa2HCNiTTMJknyjQ==}
+  /typescript/4.9.4:
+    resolution: {integrity: sha512-Uz+dTXYzxXXbsFpM86Wh3dKCxrQqUcVMxwU54orwlJjOpO3ao8L7j5lH+dWfTwgCwIuM9GQ2kvVotzYJMXTBZg==}
     engines: {node: '>=4.2.0'}
     hasBin: true
     dev: true
