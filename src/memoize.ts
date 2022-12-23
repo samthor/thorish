@@ -5,19 +5,19 @@ let memoizeMap: WeakMap<Function, MemoizeState>;
 
 class MemoizeState {
   // TODO: this is O(n) with calls. Maybe a tree structure?
-  previousCalls: { args: any, result: any, weak: boolean }[] = [];
+  previousCalls: { args: any[], result: any }[] = [];
 
-  get(query: any[]): { result: any } | undefined {
+  findIndex(query: any[]): number {
     const toRemove: number[] = [];
 
-    const found = this.previousCalls.find(({ args, weak }, index) => {
+    let index = this.previousCalls.findIndex(({ args }, index) => {
       if (query.length !== args.length) {
         return false;
       }
 
       for (let i = 0; i < args.length; ++i) {
         let check = args[i];
-        if (weak && check instanceof WeakRef) {
+        if (check instanceof WeakRef) {
           check = check.deref();
           if (check === undefined) {
             toRemove.unshift(index);
@@ -31,24 +31,39 @@ class MemoizeState {
       return true;
     });
 
-    // nb. this was inserted backwards, so we can splice
-    for (let i = 0; i < toRemove.length; ++i) {
-      this.previousCalls.splice(toRemove[i], 1);
-    }
+    toRemove.forEach((toRemoveIndex) => {
+      if (toRemoveIndex < index) {
+        --index;
+      }
+      // this is safe (wrt. toRemoveIndex) because it's high=>low
+      this.previousCalls.splice(toRemoveIndex, 1);
+    });
 
-    if (found) {
-      return { result: found.result };
-    }
+    return index;
   }
 
-  store(args: any[], result: any) {
-    this.previousCalls.push({ args, result, weak: false });
+  remove(args: any[]): boolean {
+    const index = this.findIndex(args);
+    if (index === -1) {
+      return false;
+    }
+    this.previousCalls.splice(index, 1);
+    return true;
+  }
+
+  get(args: any[]): { result: any } | undefined {
+    const index = this.findIndex(args);
+    if (index === -1) {
+      return;
+    }
+    const found = this.previousCalls[index];
+    return { result: found.result };
   }
 
   /**
-   * Stores a previous call, but uses {@link WeakRef} to refer to passed objects. If these are
+   * Stores a previous call.
    */
-  storeWeak(args: any, result: any) {
+  store(args: any[], result: any) {
     this.previousCalls.push({
       args: args.map((arg) => {
         if (typeof arg === 'object' && arg !== null) {
@@ -59,14 +74,40 @@ class MemoizeState {
         return arg;
       }),
       result,
-      weak: true,
     });
   }
-
 }
 
 
-function internalMemoize<T, R>(weak: boolean, fn: (...args: T[]) => R, args: T[]): R {
+/**
+ * Purge any previously memoized calls for a function passed to {@link memoize} or
+ * {@link memoizeWeak}.
+ */
+export function purgeMemoize(fn: Function) {
+  memoizeMap.delete(fn);
+}
+
+
+/**
+ * Clears a specific memoized call.
+ *
+ * @returns `true` if it was cleared, `false` if not found
+ */
+export function clearMemoize<T, R>(fn: (...args: T[]) => R, ...args: T[]) {
+  const state = memoizeMap?.get(fn);
+  if (state === undefined) {
+    return false;
+  }
+
+  return false;
+}
+
+
+/**
+ * Calls the passed {@link Function} but memoize the result. Matching calls to this helper will
+ * return the same result. This holds the object parameters weakly.
+ */
+export function callMemoize<T, R>(fn: (...args: T[]) => R, ...args: T[]): R {
   if (memoizeMap === undefined) {
     memoizeMap = new WeakMap();
   }
@@ -83,41 +124,15 @@ function internalMemoize<T, R>(weak: boolean, fn: (...args: T[]) => R, args: T[]
   }
 
   const newResult = fn(...args);
-
-  if (weak) {
-    s.storeWeak(args, newResult);
-  } else {
-    s.store(args, newResult);
-  }
+  s.store(args, newResult);
 
   return newResult;
 }
 
 
 /**
- * Purge any previously memoized calls for a function passed to {@link memoize} or
- * {@link memoizeWeak}.
+ * Build a memoized version of the passed function.
  */
-export function purgeMemoize(fn: Function) {
-  memoizeMap.delete(fn);
+export function memoize<T, R>(fn: (...args: T[]) => R): (...args: T[]) => R {
+  return (...args: T[]) => callMemoize(fn, ...args);
 }
-
-
-/**
- * Memoize a call to the passed {@link Function}. Matching calls to this helper will return the
- * same result.
- */
-export function memoize<T, R>(fn: (...args: T[]) => R, ...args: T[]): R {
-  return internalMemoize(false, fn, args);
-}
-
-
-/**
- * Memoize a call to the passed {@link Function}. Matching calls to this helper will return the
- * same result, however, object arguments are held weakly. If any object argument is released,
- * then that specific call will be forgotten.
- */
-export function memoizeWeak<T, R>(fn: (...args: T[]) => R, ...args: T[]): R {
-  return internalMemoize(true, fn, args);
-}
-
