@@ -3,7 +3,7 @@ import * as assert from 'node:assert';
 import { Condition } from '../src/cond.js';
 
 test('cond', () => {
-  const c = new Condition();
+  const c = new Condition(false);
 
   assert.strictEqual(c.observed(), false);
   assert.strictEqual(c.state, false);

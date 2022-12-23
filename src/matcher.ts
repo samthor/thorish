@@ -175,7 +175,7 @@ export interface Group {
  */
 export class CombineGroup implements Group {
   #groups: Group[];
-  #cond: Condition;
+  #cond: Condition<boolean>;
   #isActive: (groups: Group[]) => boolean;
 
   static create(groups: Group[], isActive?: (groups: Group[]) => boolean) {
@@ -199,7 +199,7 @@ export class CombineGroup implements Group {
       this.#cond.state = this.#isActive(groups);
     };
 
-    this.#cond = new class extends Condition {
+    this.#cond = new class extends Condition<boolean> {
 
       setup() {
         listener();  // might not be called otherwise
@@ -210,7 +210,7 @@ export class CombineGroup implements Group {
         groups.forEach((g) => g.removeListener(listener));
       }
 
-    };
+    }(false);
   }
 
   active(): boolean {
@@ -220,11 +220,11 @@ export class CombineGroup implements Group {
     return this.#isActive(this.#groups);
   }
 
-  addListener(fn: ConditionListener, options?: ConditionOptions): boolean {
+  addListener(fn: ConditionListener<boolean>, options?: ConditionOptions): boolean {
     return this.#cond.addListener(fn, options);
   }
 
-  removeListener(fn: ConditionListener): boolean {
+  removeListener(fn: ConditionListener<boolean>): boolean {
     return this.#cond.removeListener(fn);
   }
 }
@@ -243,7 +243,7 @@ export class MatcherGroup<K, T> implements Group {
   #signal: AbortSignal | undefined;
 
   #matchingSet = new Set<K>();
-  #cond: Condition;
+  #cond: Condition<boolean>;
 
   static create<K, T>(filter: Filter<T>, matcher: Matcher<K, T>, options?: AbortSignalArgs) {
     return new this(filter, matcher, options);
@@ -260,7 +260,7 @@ export class MatcherGroup<K, T> implements Group {
     this.#signal?.addEventListener('abort', () => abortCurrentSubscription());
 
     const outer = this;
-    this.#cond = new class extends Condition {
+    this.#cond = new class extends Condition<boolean> {
 
       setup() {
         const c = new AbortController();
@@ -290,7 +290,7 @@ export class MatcherGroup<K, T> implements Group {
         abortCurrentSubscription();
       }
 
-    }(options);
+    }(false, options);
   }
 
   protected isActive(matchingKeys: ReadonlySet<K>) {
@@ -313,11 +313,11 @@ export class MatcherGroup<K, T> implements Group {
     return this.#matcher.matchAll(this.#filter);
   }
 
-  addListener(fn: ConditionListener, options?: AbortSignalArgs): boolean {
+  addListener(fn: ConditionListener<boolean>, options?: AbortSignalArgs): boolean {
     return this.#cond.addListener(fn, options);
   }
 
-  removeListener(fn: ConditionListener): boolean {
+  removeListener(fn: ConditionListener<boolean>): boolean {
     return this.#cond.removeListener(fn);
   }
 

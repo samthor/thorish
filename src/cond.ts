@@ -19,30 +19,30 @@ export type ConditionOptions = AbortSignalArgs & {
 /**
  * A listener added to {@link Condition}.
  */
-export type ConditionListener = (state: boolean) => any;
+export type ConditionListener<T> = (state: T) => any;
 
 
 /**
- * Controls a boolean which fires begin/end listeners on its state change.
+ * Controls a value which fires begin/end listeners on its state change.
  */
-export class Condition {
-  #listeners = new Map<ConditionListener, boolean>();
+export class Condition<T> {
+  #listeners = new Map<ConditionListener<T>, boolean>();
   #signal: AbortSignal | undefined;
-  #state = false;
+  #state: T;
 
-  constructor(options?: AbortSignalArgs) {
+  constructor(defaultValue: T, options?: AbortSignalArgs) {
     options?.signal?.addEventListener('abort', () => {
       this.#listeners.clear();
     });
+    this.#state = defaultValue;
     this.#signal = options?.signal;
   }
 
-  get state(): boolean {
+  get state(): T {
     return this.#state;
   }
 
-  set state(v: boolean) {
-    v = !!v;  // ensure boolean-ness
+  set state(v: T) {
     if (this.#state === v) {
       return;
     }
@@ -78,7 +78,7 @@ export class Condition {
   /**
    * Adds a listener to this {@link Condition}.
    */
-  addListener(fn: ConditionListener, options?: ConditionOptions): boolean {
+  addListener(fn: ConditionListener<T>, options?: ConditionOptions): boolean {
     if (this.#signal?.aborted || options?.signal?.aborted || this.#listeners.has(fn)) {
       return false;
     }
@@ -98,7 +98,7 @@ export class Condition {
   /**
    * Removes a listener from this {@link Condition}.
    */
-  removeListener(fn: ConditionListener): boolean {
+  removeListener(fn: ConditionListener<T>): boolean {
     if (this.#listeners.size === 0) {
       return false;
     }
