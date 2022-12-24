@@ -186,7 +186,14 @@ export class MultiMap<K, V> {
 
   delete(k: K, v: V): boolean {
     const set = this.#m.get(k);
-    return set?.delete(v) ?? false;
+    if (set === undefined) {
+      return false;
+    }
+    const deleted = set.delete(v);
+    if (deleted && set.size === 0) {
+      this.#m.delete(k);
+    }
+    return deleted;
   }
 
   has(k: K, v: V): boolean {

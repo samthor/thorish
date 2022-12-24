@@ -18,3 +18,24 @@ test('spliceNextPromise', async () => {
   assert.strictEqual(out, 'this_one');
   assert.strictEqual(arr.length, 3);
 });
+
+test('buildCallTrain', async () => {
+  let count = 0;
+  const fn = promise.buildCallTrain(async () => {
+    await true; // microtask
+    const localCount = ++count;
+    return localCount;
+  });
+
+  const c1 = fn();
+  const c2 = fn();
+  const r1 = await c1;
+  const r2 = await c2;
+  assert.deepStrictEqual([r1, r2], [1, 1]);
+
+  const c3 = fn();
+  const c4 = fn();
+  const r3 = await c3;
+  const r4 = await c4;
+  assert.deepStrictEqual([r3, r4], [2, 2]);
+});

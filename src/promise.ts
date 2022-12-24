@@ -1,7 +1,4 @@
 
-import { DOMException } from './support/index.js';
-
-
 /**
  * A {@link Promise} that will never resolve.
  */
@@ -82,4 +79,23 @@ export async function spliceNextPromise<T>(arr: Promise<T>[]): Promise<T | undef
   arr.splice(next.i, 1);
 
   return next.ret;
+}
+
+
+/**
+ * Wrap a simple {@link Function} that returns a {@link Promise} such that, if many calls are made
+ * while it is resolving, the next callers "join" the train and get the same result.
+ */
+export function buildCallTrain<R>(fn: () => Promise<R>): () => Promise<R> {
+  let activePromise: Promise<R> | undefined;
+
+  return () => {
+    if (!activePromise) {
+      activePromise = fn().then((ret) => {
+        activePromise = undefined;
+        return ret;
+      });
+    }
+    return activePromise;
+  }
 }

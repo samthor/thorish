@@ -23,5 +23,3 @@ export function isArrayEqualIsh(val1: unknown, val2: unknown) {
 
   return false;
 }
-
-export const DOMException = window.DOMException;
