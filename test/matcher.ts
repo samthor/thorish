@@ -130,16 +130,16 @@ test('combine', () => {
 
   const and = new CombineGroup([mg1, mg2]);
 
-  mg1.addListener(() => console.info('mg1 pass', { x: 1 }));
-  mg2.addListener(() => console.info('mg2 pass', { y: 1 }));
+  // mg1.addListener(() => console.info('mg1 pass', { x: 1 }));
+  // mg2.addListener(() => console.info('mg2 pass', { y: 1 }));
 
   let calls = 0;
   and.addListener(() => {
-    console.info('AND called');
+    // console.info('AND called');
     ++calls;
   });
 
-  console.info('listeners setup', calls);
+  // console.info('listeners setup', calls);
 
   m.set('a', { x: 1 });
   assert.strictEqual(and.active(), false, 'not active, only one condition hit');

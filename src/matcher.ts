@@ -71,7 +71,6 @@ export class Matcher<K, T> {
         const anyValues = readMatchAny(g.filter, prev);
         const updatedAnyValues = readMatchAny(g.filter, value);
         triggerChange = !isArrayEqualIsh(anyValues, updatedAnyValues);
-        console.info('triggerChange because hasAny', { triggerChange });
       }
 
       if (triggerChange || !afterGroupsSet.delete(g)) {
