@@ -1,6 +1,3 @@
-const stopSymbol = Symbol('stop');
-const name = 'AsyncIntermediate';
-
 export type AsyncIntermediateReturn<T, Y = void> = {
   /**
    * Generator which yields values sent into it as a queue.
