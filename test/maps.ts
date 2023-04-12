@@ -38,9 +38,18 @@ test('pair', () => {
   assert.strictEqual(c.hasAny('b'), true);
   assert.deepStrictEqual([...c.otherKeys('b')], ['a', 'c']);
 
+  assert.deepStrictEqual([...c.pairs()], [
+    ['a', 'b'],
+    ['b', 'c'],
+  ]);
+
   assert.strictEqual(c.delete('b', 'a'), true);
   assert.strictEqual(c.delete('b', 'a'), false);
   assert.deepStrictEqual([...c.otherKeys('b')], ['c']);
+
+  assert.deepStrictEqual([...c.pairs()], [
+    ['b', 'c'],
+  ]);
 });
 
 test('multimap', () => {

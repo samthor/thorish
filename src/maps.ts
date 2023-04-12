@@ -1,5 +1,3 @@
-
-
 /**
  * A set which allows the same value to be added many times.
  */
@@ -54,9 +52,7 @@ export class CountSet<T> {
       }
     }
   }
-
 }
-
 
 /**
  * A set of pairs. Adding one side (e.g., `.add(a, b)`) is the same as adding the other (e.g.,
@@ -64,6 +60,10 @@ export class CountSet<T> {
  */
 export class PairSet<K> {
   #m = new PairMap<K, boolean>();
+
+  size(): number {
+    return this.#m.size();
+  }
 
   add(a: K, b: K): boolean {
     return this.#m.set(a, b, true);
@@ -89,8 +89,14 @@ export class PairSet<K> {
     return this.#m.pairsWith(k);
   }
 
-}
+  keys(): IterableIterator<K> {
+    return this.#m.keys();
+  }
 
+  pairs(): IterableIterator<[K, K]> {
+    return this.#m.pairs();
+  }
+}
 
 /**
  * A map with a pair of keys. Both sides are added at once.
@@ -119,6 +125,10 @@ export class PairMap<K, V> {
     return true;
   }
 
+  size(): number {
+    return this.#m.size;
+  }
+
   pairsWith(k: K): number {
     return this.#m.get(k)?.size ?? 0;
   }
@@ -129,6 +139,36 @@ export class PairMap<K, V> {
 
   otherEntries(k: K): IterableIterator<[K, V]> {
     return this.#m.get(k)?.entries() ?? [][Symbol.iterator]();
+  }
+
+  *pairs(): IterableIterator<[K, K]> {
+    const seen = new Set<K>();
+
+    for (const e of this.#m.entries()) {
+      const left = e[0];
+      for (const right of e[1].keys()) {
+        if (!seen.has(right)) {
+          yield [left, right];
+        }
+      }
+
+      seen.add(left);
+    }
+  }
+
+  *pairsEntries(): IterableIterator<[K, K, V]> {
+    const seen = new Set<K>();
+
+    for (const e of this.#m.entries()) {
+      const left = e[0];
+      for (const [right, value] of e[1].entries()) {
+        if (!seen.has(right)) {
+          yield [left, right, value];
+        }
+      }
+
+      seen.add(left);
+    }
   }
 
   delete(a: K, b: K): boolean {
@@ -162,8 +202,11 @@ export class PairMap<K, V> {
   get(a: K, b: K): V | undefined {
     return this.#m.get(a)?.get(b);
   }
-}
 
+  keys(): IterableIterator<K> {
+    return this.#m.keys();
+  }
+}
 
 /**
  * A map which itself contains a set of items.
@@ -207,5 +250,4 @@ export class MultiMap<K, V> {
   get(k: K): Iterable<V> {
     return this.#m.get(k) ?? [];
   }
-
 }
