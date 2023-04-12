@@ -30,6 +30,7 @@ export function buildAsyncIntermediate<T, Y = void>(): AsyncIntermediateReturn<T
     | { value: T | PromiseLike<T>; resolve: () => void; done: false }
     | { value: Y | PromiseLike<Y>; resolve: () => void; done: true }
   )[] = [];
+  let done = false;
 
   const gen: AsyncGenerator<Awaited<T>, Y, void> = (async function* () {
     for (;;) {
@@ -50,6 +51,9 @@ export function buildAsyncIntermediate<T, Y = void>(): AsyncIntermediateReturn<T
   })();
 
   const send = (value: T | PromiseLike<T>) => {
+    if (done) {
+      throw new Error(`Cannot send to stopped AsyncIntermediate`);
+    }
     return new Promise<void>((resolve) => {
       pending.push({ done: false, value, resolve });
       wakeup();
@@ -57,6 +61,10 @@ export function buildAsyncIntermediate<T, Y = void>(): AsyncIntermediateReturn<T
   };
 
   const stop = (value: Y | PromiseLike<Y>) => {
+    if (done) {
+      throw new Error(`Cannot stop already stopped AsyncIntermediate`);
+    }
+    done = true;
     return new Promise<void>((resolve) => {
       pending.push({ done: true, value, resolve });
       wakeup();
