@@ -2,7 +2,7 @@ export type AsyncIntermediateReturn<T, Y = void> = {
   /**
    * Generator which yields values sent into it as a queue.
    */
-  gen: AsyncGenerator<Awaited<T>, Y, void>;
+  gen: AsyncGenerator<T, Y, void>;
 
   /**
    * Sends a value into the generator, returning a {@link Promise} that resolves when the generator
@@ -32,7 +32,7 @@ export function buildAsyncIntermediate<T, Y = void>(): AsyncIntermediateReturn<T
   )[] = [];
   let done = false;
 
-  const gen: AsyncGenerator<Awaited<T>, Y, void> = (async function* () {
+  const gen = (async function* () {
     for (;;) {
       const next = pending.shift();
       if (next === undefined) {
@@ -48,7 +48,7 @@ export function buildAsyncIntermediate<T, Y = void>(): AsyncIntermediateReturn<T
       yield next.value;
       next.resolve(); // resolve after processed
     }
-  })();
+  } as () => AsyncGenerator<T, Y, void>)();
 
   const send = (value: T | PromiseLike<T>) => {
     if (done) {
