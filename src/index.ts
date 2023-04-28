@@ -1,4 +1,5 @@
 export * from './array.js';
+export * from './cache.js';
 export * from './cond.js';
 export * from './expirable.js';
 export * from './generator.js';
