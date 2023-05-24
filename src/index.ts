@@ -1,6 +1,7 @@
 export * from './array.js';
 export * from './cache.js';
 export * from './cond.js';
+export * from './counter.js';
 export * from './expirable.js';
 export * from './generator.js';
 export * from './intermediate.js';
