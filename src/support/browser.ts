@@ -23,3 +23,18 @@ export function isArrayEqualIsh(val1: unknown, val2: unknown) {
 
   return false;
 }
+
+/**
+ * Convert a base64-encoded string to a {@link Uint8Array}.
+ */
+export function base64ToBytes(s: string): Uint8Array {
+  // TODO: not base64?
+  const sb = atob(s);
+
+  const out = new Uint8Array(sb.length);
+  for (let i = 0; i < out.length; ++i) {
+    out[i] = sb.charCodeAt(i);
+  }
+
+  return out;
+}

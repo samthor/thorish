@@ -1,4 +1,5 @@
 import './array.js';
+import './bytes.js';
 import './cond.js';
 import './generator.js';
 import './intermediate.js';

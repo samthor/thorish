@@ -1,4 +1,3 @@
-// @ts-ignore
 import * as fake from '#support';
 
 export const isArrayEqualIsh = fake.isArrayEqualIsh;
@@ -16,4 +15,3 @@ const fauxStructuredClone = (o: any) => {
 };
 
 export const structuredIshClone: <T> (o: T) => T = (typeof structuredClone === 'function') ? structuredClone : fauxStructuredClone;
-
