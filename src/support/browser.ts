@@ -24,9 +24,6 @@ export function isArrayEqualIsh(val1: unknown, val2: unknown) {
   return false;
 }
 
-/**
- * Convert a base64-encoded string to a {@link Uint8Array}.
- */
 export function base64ToBytes(s: string): Uint8Array {
   // TODO: not base64?
   const sb = atob(s);

@@ -209,7 +209,7 @@ export class PairMap<K, V> {
 }
 
 /**
- * A map which itself contains a set of items.
+ * A map which itself contains a set of items. Each key may have multiple items set.
  */
 export class MultiMap<K, V> {
   #m = new Map<K, Set<V>>();
@@ -225,6 +225,10 @@ export class MultiMap<K, V> {
     }
     set.add(v);
     return true;
+  }
+
+  clearKey(k: K) {
+    return this.#m.delete(k);
   }
 
   delete(k: K, v: V): boolean {
@@ -249,5 +253,62 @@ export class MultiMap<K, V> {
 
   get(k: K): Iterable<V> {
     return this.#m.get(k) ?? [];
+  }
+}
+
+export class TransformMap<K, V, T = V> {
+  #data = new Map<K, V>();
+  #defaultValue: V;
+  #transform: (value: V, withValue: T) => V;
+
+  constructor(defaultValue: V, transform: (value: V, withValue: T) => V) {
+    this.#defaultValue = defaultValue;
+    this.#transform = transform;
+  }
+
+  /**
+   * Deletes the given key. Basically reverts it to its default value.
+   */
+  delete(k: K): boolean {
+    return this.#data.delete(k);
+  }
+
+  /**
+   * Update the given key.
+   */
+  update(k: K, update: T): V {
+    const prev = this.get(k);
+    const result = this.#transform(prev, update);
+    if (result === this.#defaultValue) {
+      this.#data.delete(k);
+    } else {
+      this.#data.set(k, result);
+    }
+    return result;
+  }
+
+  /**
+   * Return the current value for this key, or the default.
+   */
+  get(k: K): V {
+    const prev = this.#data.get(k);
+    if (prev === undefined) {
+      return this.#defaultValue;
+    }
+    return prev;
+  }
+
+  /**
+   * Return all keys for non-default values.
+   */
+  keys(): IterableIterator<K> {
+    return this.#data.keys();
+  }
+
+  /**
+   * Whether this key has a non-default value.
+   */
+  has(k: K): boolean {
+    return this.#data.has(k);
   }
 }

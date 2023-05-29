@@ -1,40 +1,14 @@
+import { TransformMap } from './maps.js';
 
 /**
  * Helper to create implicit counts of things.
  */
-export class StatsCount<K = string> {
-  #data = new Map<K, number>();
-
-  /**
-   * Increment this key by a number. By default, this is one.
-   */
-  inc(k: K, by: number = 1) {
-    if (!by) {
-      return;
-    }
-    const prev = this.#data.get(k) ?? 0;
-    const result = prev + by;
-
-    if (result) {
-      this.#data.set(k, result);
-    } else {
-      this.#data.delete(k);
-    }
-    return result;
+export class StatsCount<K = string> extends TransformMap<K, number> {
+  constructor() {
+    super(0, (v, update) => v + update);
   }
 
-  /**
-   * Return the count for this key, or zero.
-   */
-  get(k: K): number {
-    return this.#data.get(k) ?? 0;
+  inc(k: K, by: number) {
+    return this.update(k, by);
   }
-
-  /**
-   * Return all keys.
-   */
-  keys(): IterableIterator<K> {
-    return this.#data.keys();
-  }
-
 }

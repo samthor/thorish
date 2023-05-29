@@ -1,6 +1,7 @@
 import './array.js';
 import './bytes.js';
 import './cond.js';
+import './counter.js';
 import './generator.js';
 import './intermediate.js';
 import './maps.js';
