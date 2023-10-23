@@ -5,9 +5,9 @@
 
     // if you'd like to warn if you're using modern features, change these
     // both to e.g., "es2017"
-    "module": "esnext",
-    "target": "esnext",
-    "moduleResolution": "nodenext",
+    "module": "NodeNext",
+    "target": "ESNext",
+    "moduleResolution": "NodeNext",
     "esModuleInterop": true,
 
     "allowSyntheticDefaultImports": true,
