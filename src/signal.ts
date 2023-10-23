@@ -13,7 +13,7 @@ export function handleAbortSignalAbort(signal: AbortSignal | undefined, fn: () =
 
 /**
  * Returns a {@link Promise} for the abort of the passed {@link AbortSignal}. This may be
- * immediately.
+ * resolved immediately.
  */
 export function promiseForSignal<T = never>(
   signal: AbortSignal,
@@ -30,18 +30,19 @@ export function promiseForSignal<T = never>(
 
 /**
  * Returns a new {@link AbortSignal} that can be individually aborted, but which is also tied to
- * the lifetime of the passed signal.
+ * the lifetimes of the passed signals. If any passed signals are aborted, the derived symbol also
+ * aborts.
  *
- * If the passed signal is already aborted, returns it directly.
+ * If any passed signal is already aborted, returns one of them directly (not derived).
  */
-export function derivedSignal(previous?: AbortSignal) {
-  if (previous?.aborted) {
-    return { signal: previous, abort: () => {} };
+export function derivedSignal(...previous: AbortSignal[]) {
+  const previouslyAborted = previous.find((x) => x.aborted);
+  if (previouslyAborted !== undefined) {
+    return { signal: previouslyAborted, abort: () => {} };
   }
 
   const c = new AbortController();
   const abort = () => c.abort();
-
-  previous?.addEventListener('abort', abort);
+  previous.forEach((p) => p.addEventListener('abort', abort));
   return { signal: c.signal, abort };
 }
