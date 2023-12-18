@@ -1,4 +1,5 @@
 import './array.js';
+import './bound-proxy.js';
 import './bytes.js';
 import './cond.js';
 import './counter.js';

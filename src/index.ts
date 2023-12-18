@@ -1,4 +1,5 @@
 export * from './array.js';
+export * from './bound-proxy.js';
 export * from './bytes.js';
 export * from './cache.js';
 export * from './cond.js';
