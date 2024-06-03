@@ -1,4 +1,4 @@
-import { resolvable, unresolvedPromise } from './promise.js';
+import { promiseWithResolvers, unresolvedPromise } from './promise.js';
 import { AbortSignalArgs } from './types.js';
 import type { WorkQueue } from './queue.js';
 import { promiseForSignal, symbolAbortSignal } from './internal.js';
@@ -103,7 +103,7 @@ const doneSymbol = Symbol('done');
  * This a much simpler version of {@link WorkQueue}.
  */
 export function asyncGeneratorQueue<T, Y = void>(): AsyncGeneratorQueueReturn<T, Y> {
-  let { promise, resolve } = resolvable<void>();
+  let { promise, resolve } = promiseWithResolvers<void>();
   let isDone = false;
 
   const pending: (Promise<T> | T | typeof doneSymbol)[] = [];
@@ -141,7 +141,7 @@ export function asyncGeneratorQueue<T, Y = void>(): AsyncGeneratorQueueReturn<T,
         yield next;
       }
 
-      ({ promise, resolve } = resolvable());
+      ({ promise, resolve } = promiseWithResolvers<void>());
     }
   })();
 

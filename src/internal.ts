@@ -18,4 +18,3 @@ export async function promiseForSignal(signal?: AbortSignal): Promise<never> {
  * Symbol used in throw/catch blocks.
  */
 export const symbolAbortSignal = Symbol('known');
-

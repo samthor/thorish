@@ -1,9 +1,7 @@
-
 /**
  * A {@link Promise} that will never resolve.
  */
 export const unresolvedPromise = new Promise<never>(() => {});
-
 
 /**
  * Wraps a trigger function (e.g., {@link setTimeout} or {@link requestAnimationFrame}) and returns
@@ -11,36 +9,35 @@ export const unresolvedPromise = new Promise<never>(() => {});
  *
  * Using {@link setInterval} is _not_ a good candidate for this function.
  */
-export function wrapTrigger<TCallbackParam = void, TArgs extends any[] = []>(trigger: (callback: (arg: TCallbackParam) => any, ...moreArgs: TArgs) => any, ...moreArgs: TArgs): Promise<TCallbackParam> {
+export function wrapTrigger<TCallbackParam = void, TArgs extends any[] = []>(
+  trigger: (callback: (arg: TCallbackParam) => any, ...moreArgs: TArgs) => any,
+  ...moreArgs: TArgs
+): Promise<TCallbackParam> {
   return new Promise((resolve) => {
     trigger(resolve, ...moreArgs);
   });
 }
-
 
 /**
  * Sets a timeout via {@link Promise}.
  */
 export const timeout = (duration: number) => wrapTrigger(setTimeout, duration);
 
-
 /**
- * Builds a resolvable object.
+ * Wraps {@link Promise.withResolvers} with a polyfill.
  */
-export function resolvable<T = void>(): {
-  resolve: (value: T) => void;
-  reject: (value: any) => void;
-  promise: Promise<T>;
-} {
-  let resolve, reject;
-  const promise = new Promise<T>((localResolve, localReject) => {
-    resolve = localResolve;
-    reject = localReject;
-  });
+export const promiseWithResolvers = Promise.withResolvers
+  ? Promise.withResolvers.bind(Promise)
+  : function localResolvable<T = void>(): PromiseWithResolvers<T> {
+      let resolve, reject;
+      const promise = new Promise<T>((localResolve, localReject) => {
+        resolve = localResolve;
+        reject = localReject;
+      });
+      return { resolve, reject, promise };
+    };
 
-  return { resolve, reject, promise };
-}
-
+export const resolvable = promiseWithResolvers;
 
 /**
  * Returns a {@link Promise} that resolves after a the first event of the given name is fired.
@@ -49,7 +46,11 @@ export function resolvable<T = void>(): {
  *
  * If the {@link AbortSignal} is aborted, this will reject with an unspecified {@link Error}.
  */
-export function promiseForEvent<X extends Event = Event>(target: EventTarget, eventName: string, options: Partial<{ passive: boolean, signal: AbortSignal }> = {}): Promise<X> {
+export function promiseForEvent<X extends Event = Event>(
+  target: EventTarget,
+  eventName: string,
+  options: Partial<{ passive: boolean; signal: AbortSignal }> = {},
+): Promise<X> {
   if (options.signal?.aborted) {
     return Promise.reject();
   }
@@ -58,7 +59,6 @@ export function promiseForEvent<X extends Event = Event>(target: EventTarget, ev
     target.addEventListener(eventName, (e) => resolve(e as X), { ...options, once: true });
   });
 }
-
 
 /**
  * Helper which finds the next completed promise (using {@link Promise.race}) from the given array,
@@ -73,7 +73,7 @@ export async function spliceNextPromise<T>(arr: Promise<T>[]): Promise<T | undef
     return undefined;
   }
 
-  const internal = arr.map((x, i) => x.then((ret) => ({ret, i})));
+  const internal = arr.map((x, i) => x.then((ret) => ({ ret, i })));
   const next = await Promise.race(internal);
 
   arr.splice(next.i, 1);
@@ -81,10 +81,11 @@ export async function spliceNextPromise<T>(arr: Promise<T>[]): Promise<T | undef
   return next.ret;
 }
 
-
 /**
  * Wrap a simple {@link Function} that returns a {@link Promise} such that, if many calls are made
  * while it is resolving, the next callers "join" the train and get the same result.
+ *
+ * This is a simple memoize implementation.
  */
 export function buildCallTrain<R>(fn: () => Promise<R>): () => Promise<R> {
   let activePromise: Promise<R> | undefined;
@@ -97,5 +98,5 @@ export function buildCallTrain<R>(fn: () => Promise<R>): () => Promise<R> {
       });
     }
     return activePromise;
-  }
+  };
 }

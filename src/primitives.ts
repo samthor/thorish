@@ -1,4 +1,3 @@
-
 /**
  * Returns a basic hash of the string or {@link ArrayLike}.
  */
@@ -26,7 +25,7 @@ export function hashCodeString(s: string) {
 export function hashCodeArray(s: ArrayLike<number>) {
   let h = 0;
   for (let i = 0; i < s.length; ++i) {
-    h = Math.imul(31, h) + s[i] | 0;
+    h = (Math.imul(31, h) + s[i]) | 0;
   }
   return Math.abs(h);
 }
@@ -40,7 +39,7 @@ export function randomArrayChoice<X>(arr: ArrayLike<X>): X | undefined {
 }
 
 /**
- * Pick a random item from the passed {@link Iterable}.
+ * Pick a random item from the passed {@link Iterable}. Consumes the entire iterable.
  */
 export function randomPick<X>(iter: Iterable<X>): X | undefined {
   if (Array.isArray(iter)) {
@@ -50,7 +49,7 @@ export function randomPick<X>(iter: Iterable<X>): X | undefined {
 }
 
 /**
- * Picks a random N items from the passed {@link Iterable}.
+ * Picks a random N items from the passed {@link Iterable}. Consumes the entire iterable.
  */
 export function randomPickN<X>(iter: Iterable<X>, count: number): X[] {
   const out: X[] = [];
@@ -94,6 +93,16 @@ export function lerp(low: number, high: number, at: number) {
 }
 
 /**
+ * Finds the position (normally 0-1) between low-high.
+ *
+ * Will return `Infinity` if low and high are the same.
+ */
+export function inverseLerp(low: number, high: number, value: number) {
+  const range = high - low;
+  return (value - low) / range;
+}
+
+/**
  * Returns a random number in the given range. This is the same semantics as {@link Math.random()}.
  */
 export function randomRange(a: number, b: number = 0) {
@@ -109,4 +118,19 @@ export function randomRangeInt(a: number, b: number = 0) {
     [a, b] = [b, a];
   }
   return Math.floor(randomRange(a, b));
+}
+
+/**
+ * Generates seeded, random 32-bit numbers between `[-2147483648,2147483647]` (i.e., `[-2^31,(2^31)-1]`).
+ *
+ * The best use is to clip these numbers with a mask, e.g., `gen() & 0xffff` for 16-bit.
+ */
+export function seeded32(s: number): () => number {
+  // nb. t is used as a local var declaration only
+  return (t: number = 0) => (
+    (s = (s + 0x9e3779b9) | 0),
+    (t = Math.imul(s ^ (s >>> 16), 0x21f0aaad)),
+    (t = Math.imul(t ^ (t >>> 15), 0x735a2d97)),
+    (t = t ^ (t >>> 15))
+  );
 }
