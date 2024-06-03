@@ -27,7 +27,7 @@ export const timeout = (duration: number) => wrapTrigger(setTimeout, duration);
  * Wraps {@link Promise.withResolvers} with a polyfill.
  */
 export const promiseWithResolvers = Promise.withResolvers
-  ? Promise.withResolvers.bind(Promise)
+  ? Promise.withResolvers.bind(Promise) as <T>() => PromiseWithResolvers<T>
   : function localResolvable<T = void>(): PromiseWithResolvers<T> {
       let resolve, reject;
       const promise = new Promise<T>((localResolve, localReject) => {
