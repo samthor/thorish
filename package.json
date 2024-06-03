@@ -11,8 +11,8 @@
     "build:dist-node": "esbuild src/index.ts --format=esm --platform=node --outfile=dist/node.esm.js --bundle --sourcemap",
     "build:dist-browser": "esbuild src/index.ts --format=esm --platform=browser --outfile=dist/browser.esm.js --bundle --sourcemap",
     "build:types": "tsc -p tsconfig.types.json",
-    "build": "rm -rf dist; node --run build:dist-node && node --run build:dist-browser && node --run build:types",
-    "prepublishOnly": "node --run build"
+    "build": "rm -rf dist; pnpm run build:dist-node && pnpm run build:dist-browser && pnpm run build:types",
+    "prepublishOnly": "pnpm run build"
   },
   "sideEffects": false,
   "types": "dist/types/index.d.ts",
