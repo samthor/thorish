@@ -1,18 +1,18 @@
 {
   "devDependencies": {
-    "@types/node": "^18.11.16",
-    "esbuild": "^0.15.9",
-    "tsx": "^3.9.0",
-    "typescript": "^5.0.4"
+    "@types/node": "^20.14.0",
+    "esbuild": "^0.21.4",
+    "tsx": "^4.11.2",
+    "typescript": "^5.4.5"
   },
   "type": "module",
   "scripts": {
     "test": "tsx test/",
     "build:dist-node": "esbuild src/index.ts --format=esm --platform=node --outfile=dist/node.esm.js --bundle --sourcemap",
     "build:dist-browser": "esbuild src/index.ts --format=esm --platform=browser --outfile=dist/browser.esm.js --bundle --sourcemap",
-    "build:types": "tsc --emitDeclarationOnly --declaration src/index.ts --outDir dist/types --target esnext",
-    "build": "rm -rf dist; pnpm run build:dist-node && pnpm run build:dist-browser && pnpm run build:types",
-    "prepublishOnly": "pnpm run build"
+    "build:types": "tsc -p tsconfig.types.json",
+    "build": "rm -rf dist; node --run build:dist-node && node --run build:dist-browser && node --run build:types",
+    "prepublishOnly": "node --run build"
   },
   "sideEffects": false,
   "types": "dist/types/index.d.ts",
