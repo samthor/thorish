@@ -21,11 +21,10 @@ export function promiseForSignal<T = never>(
 ): Promise<T> {
   if (signal.aborted) {
     return Promise.resolve(resolveWith);
-  } else {
-    return new Promise((resolve) => {
-      signal.addEventListener('abort', () => resolve(resolveWith));
-    });
   }
+  return new Promise((resolve) => {
+    signal.addEventListener('abort', () => resolve(resolveWith));
+  });
 }
 
 /**
@@ -33,7 +32,8 @@ export function promiseForSignal<T = never>(
  * the lifetimes of the passed signals. If any passed signals are aborted, the derived symbol also
  * aborts.
  *
- * If any passed signal is already aborted, returns one of them directly (not derived).
+ * If any passed signal is already aborted, returns one of them directly (not derived), with a no-op
+ * abort function.
  */
 export function derivedSignal(...previous: AbortSignal[]) {
   const previouslyAborted = previous.find((x) => x.aborted);

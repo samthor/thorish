@@ -33,4 +33,20 @@ test('seed', () => {
   assert.strictEqual(-1182780713 & 0xff, 215); // can mask
   assert.strictEqual(s(), -1646890852);
   assert.strictEqual(s(), 428646200);
+
+  const s2 = primitives.seededRand(1000);
+  assert.strictEqual(s2(), 0.7110681121703237);
+  assert.strictEqual(s2(), 0.9401418915949762);
+  assert.strictEqual(s2(), 0.6993810315616429);
+  assert.strictEqual(s2(), 0.9919486327562481);
+  assert.strictEqual(s2(), 0.24484887369908392);
+  assert.strictEqual(s2(), 0.2944149309769273);
+
+  // seed with actual rand
+  const s3 = primitives.seededRand(primitives.randomRangeInt(0, 10_000));
+  for (let i = 0; i < 10_000; ++i) {
+    const v = s3();
+    assert.ok(v >= 0.0);
+    assert.ok(v < 1.0);
+  }
 });

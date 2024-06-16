@@ -123,6 +123,9 @@ export function randomRangeInt(a: number, b: number = 0) {
 /**
  * Generates seeded, random 32-bit numbers between `[-2147483648,2147483647]` (i.e., `[-2^31,(2^31)-1]`).
  *
+ * The seed must be an integer, if a float is passed, only the integer part is used (e.g., `0.5`
+ * becomes `0`).
+ *
  * The best use is to clip these numbers with a mask, e.g., `gen() & 0xffff` for 16-bit.
  */
 export function seeded32(s: number): () => number {
@@ -133,4 +136,13 @@ export function seeded32(s: number): () => number {
     (t = Math.imul(t ^ (t >>> 15), 0x735a2d97)),
     (t = t ^ (t >>> 15))
   );
+}
+
+/**
+ * Generates seeded `Math.random()` behavior (i.e., >=0 and <1). Requires integer seed, just like
+ * {@link seeded32}.
+ */
+export function seededRand(s: number): () => number {
+  const actual = seeded32(s);
+  return () => ((actual() / 2147483648) + 1.0) / 2.0;
 }

@@ -32,7 +32,7 @@ export function buildAsyncIntermediate<T, Y = void>(): AsyncIntermediateReturn<T
   )[] = [];
   let done = false;
 
-  const gen = (async function* () {
+  const gen = (async function* (): AsyncGenerator<T, Y, void> {
     for (;;) {
       const next = pending.shift();
       if (next === undefined) {
@@ -48,7 +48,7 @@ export function buildAsyncIntermediate<T, Y = void>(): AsyncIntermediateReturn<T
       yield next.value;
       next.resolve(); // resolve after processed
     }
-  } as () => AsyncGenerator<T, Y, void>)();
+  })();
 
   const send = (value: T | PromiseLike<T>) => {
     if (done) {

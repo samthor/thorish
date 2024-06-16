@@ -13,4 +13,13 @@ test('sub', () => {
   assert.strictEqual(array.findSubArray(arr, ['b', 'c']), 1);
   assert.strictEqual(array.findSubArray(arr, ['b', 'c', 'a']), -1);
   assert.strictEqual(array.arrayContainsSub(arr, ['b', 'c']), true);
+
+  // empty array should be at index zero
+  assert.strictEqual(array.findSubArray(arr, []), 0);
+
+  // empty array is in empty array at zero
+  assert.strictEqual(array.findSubArray([], []), 0);
+
+  // can't find in empty array
+  assert.strictEqual(array.findSubArray([], ['cannot be found']), -1);
 });

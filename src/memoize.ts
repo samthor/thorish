@@ -104,8 +104,11 @@ export function clearMemoize<T, R>(fn: (...args: T[]) => R, ...args: T[]) {
 
 
 /**
- * Calls the passed {@link Function} but memoize the result. Matching calls to this helper will
- * return the same result. This holds the object parameters weakly.
+ * Calls the passed {@link Function} but memoize the result based on the function arguments.
+ * The memoize state is stored globally based on the function ref.
+ *
+ * Matching calls to this helper will return the same result.
+ * Holds the object parameters (i.e., non-nullable typeof 'object') weakly.
  */
 export function callMemoize<T, R>(fn: (...args: T[]) => R, ...args: T[]): R {
   if (memoizeMap === undefined) {

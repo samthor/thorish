@@ -1,6 +1,6 @@
 
 /**
- * Finds all indexes of a given array which match the given predicate.
+ * Finds all indexes of a given iterable which match the given predicate.
  */
 export function findAllIndex<X>(arr: Iterable<X>, predicate: (x: X) => boolean): number[] {
   const out: number[] = [];

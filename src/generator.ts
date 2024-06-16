@@ -32,18 +32,15 @@ export async function* combineAsyncGenerators<T, Y = void>(
     const next = await Promise.race(nexts);
 
     if (next.res.done) {
-      // We put an unresolvable promise here so it'll never resolve again.
+      // Put an unresolvable promise here so it'll never resolve again and `Promise.race` will
+      // ignore it.
       nexts[next.index] = unresolvedPromise;
       doneValues[next.index] = next.res.value;
       ++doneCount;
     } else {
-      // TODO: tsc is confused
-      const value = next.res.value as T;
-
       // We got a value on this generator! Reset it for next time.
       nexts[next.index] = buildNext(next.index);
-
-      yield { index: next.index, value };
+      yield { index: next.index, value: next.res.value };
     }
   }
 
