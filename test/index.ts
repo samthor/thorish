@@ -1,6 +1,5 @@
 import './array.js';
 import './bound-proxy.js';
-import './bytes.js';
 import './cond.js';
 import './counter.js';
 import './generator.js';
@@ -12,4 +11,6 @@ import './object-utils.js';
 import './primitives.js';
 import './promise.js';
 import './queue.js';
+import './stream.js';
+import './support.js';
 import './task.js';

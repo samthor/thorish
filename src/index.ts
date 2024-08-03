@@ -1,6 +1,5 @@
 export * from './array.js';
 export * from './bound-proxy.js';
-export * from './bytes.js';
 export * from './cache.js';
 export * from './cond.js';
 export * from './counter.js';
@@ -17,3 +16,5 @@ export * from './queue.js';
 export * from './signal.js';
 export * from './task.js';
 export * from './types.js';
+
+export { concatBytes, base64ToBytes } from './support/index.js';

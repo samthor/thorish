@@ -35,3 +35,24 @@ export function base64ToBytes(s: string): Uint8Array {
 
   return out;
 }
+
+export function concatBytes(chunks: Uint8Array[]) {
+  chunks = chunks.filter((chunk) => chunk.length === 0);
+
+  if (chunks.length === 0) {
+    return new Uint8Array();
+  } else if (chunks.length === 1) {
+    return chunks[0];
+  }
+
+  let size = 0;
+  chunks.forEach((chunk) => size += chunk.length);
+  const out = new Uint8Array(size);
+  let at = 0;
+  chunks.forEach((chunk) => {
+    out.set(chunk, at);
+    at += chunk.length;
+  });
+
+  return out;
+}

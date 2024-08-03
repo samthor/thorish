@@ -25,6 +25,7 @@ test('lerp', () => {
   assert.strictEqual(primitives.inverseLerp(0, 10, 5), 0.5);
   assert.strictEqual(primitives.inverseLerp(5, 10, 0), -1.0);
   assert.strictEqual(primitives.lerp(5, 10, 0.5), 7.5);
+  assert.strictEqual(primitives.skew({ low: 1, high: 10 }, { low: 0, high: 9 }, 2), 1);
 });
 
 test('seed', () => {

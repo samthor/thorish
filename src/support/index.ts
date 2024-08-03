@@ -1,5 +1,8 @@
 
 // @ts-ignore tsc on command-line is unhappy
+export { concatBytes, base64ToBytes } from '#support';
+
+// @ts-ignore tsc on command-line is unhappy
 import * as fake from '#support';
 
 export const isArrayEqualIsh = fake.isArrayEqualIsh;

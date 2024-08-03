@@ -121,6 +121,24 @@ export function randomRangeInt(a: number, b: number = 0) {
 }
 
 /**
+ * Clamps a number between low and high.
+ */
+export const clamp = (low: number, high: number, number: number): number =>
+  Math.max(Math.min(high, number), low);
+
+/**
+ * Skews a value from a prior range to a new range.
+ */
+export const skew = (
+  from: { low: number; high: number },
+  to: { low: number; high: number },
+  value: number,
+) => {
+  const at = inverseLerp(from.low, from.high, value);
+  return lerp(to.low, to.high, at);
+};
+
+/**
  * Generates seeded, random 32-bit numbers between `[-2147483648,2147483647]` (i.e., `[-2^31,(2^31)-1]`).
  *
  * The seed must be an integer, if a float is passed, only the integer part is used (e.g., `0.5`
@@ -144,5 +162,5 @@ export function seeded32(s: number): () => number {
  */
 export function seededRand(s: number): () => number {
   const actual = seeded32(s);
-  return () => ((actual() / 2147483648) + 1.0) / 2.0;
+  return () => (actual() / 2147483648 + 1.0) / 2.0;
 }
