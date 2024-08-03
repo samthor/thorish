@@ -14,6 +14,7 @@ export * from './promise.js';
 export * from './primitives.js';
 export * from './queue.js';
 export * from './signal.js';
+export * from './stream.js';
 export * from './task.js';
 export * from './types.js';
 

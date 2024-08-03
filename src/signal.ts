@@ -12,8 +12,11 @@ export function handleAbortSignalAbort(signal: AbortSignal | undefined, fn: () =
 }
 
 /**
- * Returns a {@link Promise} for the abort of the passed {@link AbortSignal}. This may be
- * resolved immediately.
+ * Returns a {@link Promise} for the abort of the passed {@link AbortSignal}. This may be already
+ * resolved/rejected if the signal is already aborted, rather than running in a microtask.
+ *
+ * By default, this rejects. Pass a second argument (even `null` or `undefined`) to resolve
+ * 'safely'.
  */
 export function promiseForSignal<T = never>(
   signal: AbortSignal,
