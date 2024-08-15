@@ -10,6 +10,7 @@ export * from './maps.js';
 export * from './matcher.js';
 export * from './memoize.js';
 export * from './object-utils.js';
+export * from './record.js';
 export * from './promise.js';
 export * from './primitives.js';
 export * from './queue.js';

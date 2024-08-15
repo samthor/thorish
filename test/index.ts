@@ -10,6 +10,7 @@ import './memoize.js';
 import './object-utils.js';
 import './primitives.js';
 import './promise.js';
+import './record.js';
 import './queue.js';
 import './stream.js';
 import './support.js';
