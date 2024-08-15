@@ -86,3 +86,26 @@ export function workTask<T = void>(
     queue: (arg, ...rest) => wq.push(arg, ...rest),
   };
 }
+
+/**
+ * Creates a simple serial runner for tasks. This allows callables to be pushed into it and run
+ * only after the prior task has failed or completed.
+ *
+ * Pass an optional argument to use as the `this` on all invoked tasks. This isn't typesafe, just
+ * assume it.
+ */
+export function runner<X = never>(thisArg?: X) {
+  let p = Promise.resolve<unknown>(undefined);
+
+  return <T>(cb: () => Promise<T> | T) => {
+    const output = p
+      .catch(() => {})
+      .then(() => {
+        if (thisArg !== undefined) {
+          return cb.call(thisArg);
+        }
+        return cb();
+      });
+    return output;
+  };
+}
