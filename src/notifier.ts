@@ -10,11 +10,13 @@ export type Notifier<T> = {
    * so changes to the notifier list within a notifier have no effect on the current run.
    */
   notify(value: T): void;
+} & NotifierListener<T>;
 
+export type NotifierListener<T> = {
   /**
    * Adds a listener to this notifier. Allows duplicates.
    */
-  addListener(fn: (value: T) => void, args?: { signal?: AbortSignal } | AbortSignal): void;
+  addListener(fn: (value: T) => void, args?: { signal?: AbortSignal }): void;
 };
 
 export type BuildNotifierArgs = {
@@ -29,6 +31,9 @@ export type BuildNotifierArgs = {
   teardown: () => void;
 };
 
+/**
+ * Builds a notifier. This can be spread onto another object as it does not use `this`.
+ */
 export function buildNotifier<T>(args?: Partial<BuildNotifierArgs>): Notifier<T> {
   const listeners: ((value: T) => void)[] = [];
   const { setup, teardown } = args ?? {};
