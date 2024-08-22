@@ -38,7 +38,9 @@ export function promiseForSignal<T = never>(
  * If any passed signal is already aborted, returns one of them directly (not derived), with a no-op
  * abort function.
  */
-export function derivedSignal(...previous: AbortSignal[]) {
+export function derivedSignal(...raw: (AbortSignal | undefined)[]) {
+  const previous = raw.filter(Boolean) as AbortSignal[];
+
   const previouslyAborted = previous.find((x) => x.aborted);
   if (previouslyAborted !== undefined) {
     return { signal: previouslyAborted, abort: () => {} };
