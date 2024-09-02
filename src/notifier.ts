@@ -16,7 +16,7 @@ export type NotifierListener<T> = {
   /**
    * Adds a listener to this notifier. Allows duplicates.
    */
-  addListener(fn: (value: T) => void, args?: { signal?: AbortSignal }): void;
+  addListener(fn: (value: T) => void, args?: { signal?: AbortSignal; once?: boolean }): void;
 };
 
 export type BuildNotifierArgs = {
@@ -50,10 +50,41 @@ export function buildNotifier<T>(args?: Partial<BuildNotifierArgs>): Notifier<T>
         return;
       }
 
+      let removed = false;
+      const remove = () => {
+        if (removed) {
+          return;
+        }
+        removed = true;
+
+        const index = listeners.indexOf(fn);
+        if (index === -1) {
+          return;
+        }
+        listeners.splice(index, 1);
+        if (listeners.length === 0) {
+          // throw is fine, nothing else to do
+          teardown?.();
+        }
+      };
+      const once = Boolean(args?.once);
+
+      // we explicitly allow duplicates, create a fake
       const exists = listeners.includes(fn);
       if (exists) {
         const realFn = fn;
         fn = (value) => realFn(value);
+      }
+
+      if (once) {
+        const realFn = fn;
+        fn = (value) => {
+          try {
+            realFn(value);
+          } finally {
+            remove();
+          }
+        };
       }
 
       // try/finally in case setup() throws
@@ -62,17 +93,7 @@ export function buildNotifier<T>(args?: Partial<BuildNotifierArgs>): Notifier<T>
           setup?.();
         }
       } finally {
-        signal?.addEventListener('abort', () => {
-          const index = listeners.indexOf(fn);
-          if (index === -1) {
-            return;
-          }
-          listeners.splice(index, 1);
-          if (listeners.length === 0) {
-            // throw is fine, nothing else to do
-            teardown?.();
-          }
-        });
+        signal?.addEventListener('abort', remove);
         listeners.push(fn);
       }
     },
