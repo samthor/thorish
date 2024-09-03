@@ -1,4 +1,3 @@
-
 /**
  * This is good enough for the matcher "any" stuff.
  */
@@ -37,7 +36,7 @@ export function base64ToBytes(s: string): Uint8Array {
 }
 
 export function concatBytes(chunks: Uint8Array[]) {
-  chunks = chunks.filter((chunk) => chunk.length === 0);
+  chunks = chunks.filter((chunk) => chunk.length !== 0);
 
   if (chunks.length === 0) {
     return new Uint8Array();
@@ -46,7 +45,7 @@ export function concatBytes(chunks: Uint8Array[]) {
   }
 
   let size = 0;
-  chunks.forEach((chunk) => size += chunk.length);
+  chunks.forEach((chunk) => (size += chunk.length));
   const out = new Uint8Array(size);
   let at = 0;
   chunks.forEach((chunk) => {
