@@ -13,6 +13,7 @@ import './primitives.js';
 import './promise.js';
 import './record.js';
 import './queue.js';
+import './sequence.js';
 import './stream.js';
 import './support.js';
 import './task.js';
