@@ -133,7 +133,7 @@ export interface Queue<X> {
 }
 
 /**
- * Link-list based queue.
+ * Linked-list based queue.
  */
 export interface LinkQueue<X> extends Queue<X> {
   /**
