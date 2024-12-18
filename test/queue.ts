@@ -1,7 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { WorkQueue } from '../src/queue.js';
-import { wrapTrigger } from '../src/promise.js';
+import { buildLinkQueue, WorkQueue } from '../src/queue.js';
+import { timeout, wrapTrigger } from '../src/promise.js';
 
 test('queue', async () => {
   const wq = new WorkQueue<number>();
@@ -15,7 +15,7 @@ test('queue', async () => {
   for await (const next of wq) {
     actual.push(next);
 
-    if (wq.length === 0) {
+    if ((wq.length as number) === 0) {
       break;
     }
   }
@@ -87,12 +87,8 @@ test('wait2', async () => {
 
     // We prove that some values have been stolen, AND the returned Promises have not resolved
     // with accidental undefined values.
-    const out = await Promise.race([
-      Promise.all([n1, n2, n3]),
-      Promise.resolve(true),
-    ]);
+    const out = await Promise.race([Promise.all([n1, n2, n3]), Promise.resolve(true)]);
     assert.strictEqual(out, true);
-
   } finally {
     done = true;
   }
@@ -104,7 +100,7 @@ test('undefined', async () => {
 
   wq.push(undefined);
   assert.strictEqual(wq.length, 1);
-  assert.strictEqual(wq.wait(), undefined);  // no waiting required
+  assert.strictEqual(wq.wait(), undefined); // no waiting required
 
   const next = await wq.next();
   assert.strictEqual(next, undefined);
@@ -116,4 +112,37 @@ test('undefined', async () => {
     iterated++;
   }
   assert.strictEqual(iterated, 1);
+});
+
+test('link-queue', async () => {
+  const lq = buildLinkQueue<number>();
+  assert.strictEqual(lq.push(123), false);
+
+  const l = lq.join();
+  assert.strictEqual(l.peek(), undefined);
+
+  assert.strictEqual(lq.push(456), false); // not waiting
+  assert.strictEqual(l.peek(), 456);
+  assert.strictEqual(l.peek(), 456);
+
+  assert.strictEqual(456, await l.next());
+
+  let hasValue = false;
+  const pending = l.next();
+  pending.then(() => {
+    hasValue = true;
+  });
+  await timeout(0);
+  assert.strictEqual(hasValue, false);
+
+  assert.strictEqual(lq.push(789), true);
+  await timeout(0);
+  assert.strictEqual(hasValue, true);
+  assert.strictEqual(await pending, 789);
+
+  assert.strictEqual(lq.push(0), false); // no-one waiting
+  assert.strictEqual(lq.push(-1), false);
+  assert.strictEqual(lq.push(-2), false);
+
+  assert.deepStrictEqual(await l.batch(), [0, -1, -2]);
 });

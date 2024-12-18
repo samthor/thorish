@@ -2,6 +2,7 @@ export * from './array.js';
 export * from './bound-proxy.js';
 export * from './cache.js';
 export * from './cond.js';
+export * from './conn.js';
 export * from './counter.js';
 export * from './expirable.js';
 export * from './generator.js';

@@ -164,3 +164,14 @@ export function seededRand(s: number): () => number {
   const actual = seeded32(s);
   return () => (actual() / 2147483648 + 1.0) / 2.0;
 }
+
+/**
+ * Returns a random 36-alphabet string (0-9, a-z) for use as a random identifier.
+ *
+ * By default, generates a 6-character long ID, which is ~31 bits. The bits are linear with length;
+ * each character is ~5.15 bits worth.
+ */
+export function randomId(length = 6) {
+  const r = Math.floor(Math.random() * 36 ** length);
+  return r.toString(36).padStart(length, '0').substring(0, length);
+}

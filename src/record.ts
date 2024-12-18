@@ -58,3 +58,16 @@ export function filterRecord<I>(
   const outputEntries = inputEntries.filter(([key, value]): unknown => cb(key, value));
   return Object.fromEntries(outputEntries);
 }
+
+/**
+ * Does the passed record have any entries. Determines this by trying to iterate the 1st key,
+ * rather than using {@link Object.keys} or similar (slow).
+ */
+export function recordHasAny<X extends Record<any, any>>(rec?: X | null): boolean {
+  if (rec) {
+    for (const _ in rec) {
+      return true;
+    }
+  }
+  return false;
+}
