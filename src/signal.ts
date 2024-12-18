@@ -1,7 +1,7 @@
 /**
  * Ensures that a passed {@link Function} is called when the given {@link AbortSignal} is aborted.
  *
- * This may call inline if the signal is _already_ aborted.
+ * This calls inline if the signal is _already_ aborted.
  */
 export function handleAbortSignalAbort(signal: AbortSignal | undefined, fn: () => any): void {
   if (signal?.aborted) {
@@ -9,6 +9,19 @@ export function handleAbortSignalAbort(signal: AbortSignal | undefined, fn: () =
   } else {
     signal?.addEventListener('abort', fn);
   }
+}
+
+/**
+ * Returns a {@link Promise} for the abort of the passed {@link AbortSignal}. Resolves with void/
+ * `undefined` when done.
+ */
+export function promiseVoidForSignal(signal: AbortSignal): Promise<void> {
+  if (signal.aborted) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    signal.addEventListener('abort', () => resolve());
+  });
 }
 
 /**
