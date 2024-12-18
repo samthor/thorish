@@ -152,3 +152,14 @@ test('queue', async () => {
     c.abort();
   }
 });
+
+test('queue abort', async () => {
+  const c = new AbortController();
+  const q = buildLinkQueue<number>();
+
+  const lq = q.join(c.signal);
+
+  c.abort();
+
+  assert.strictEqual(await lq.next(), undefined);
+});

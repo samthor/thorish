@@ -296,6 +296,10 @@ class LinkQueueImpl<X> implements LinkQueue<X> {
         return ref.value;
       }
       async next() {
+        if (signal.aborted) {
+          return undefined;
+        }
+
         let { value } = ref;
         if (value !== undefined) {
           ref = ref.next!;
@@ -359,7 +363,6 @@ class ArrayQueueImpl<X> implements Queue<X> {
       for (;;) {
         const last = outer.subs.get(l);
         if (last === undefined) {
-          console.info('aborted', []);
           return [];
         } else if (last < outer.head) {
           const start = outer.head - outer.data.length;
