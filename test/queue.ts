@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { buildLinkQueue, WorkQueue } from '../src/queue.js';
+import { buildArrayQueue, buildLinkQueue, type Queue, WorkQueue } from '../src/queue.js';
 import { timeout, wrapTrigger } from '../src/promise.js';
 
 test('queue', async () => {
@@ -114,35 +114,41 @@ test('undefined', async () => {
   assert.strictEqual(iterated, 1);
 });
 
-test('link-queue', async () => {
-  const lq = buildLinkQueue<number>();
-  assert.strictEqual(lq.push(123), false);
+test('queue', async () => {
+  const queues: Queue<number>[] = [buildLinkQueue<number>(), buildArrayQueue<number>()];
+  for (const lq of queues) {
+    const c = new AbortController();
 
-  const l = lq.join();
-  assert.strictEqual(l.peek(), undefined);
+    assert.strictEqual(lq.push(123), false);
 
-  assert.strictEqual(lq.push(456), false); // not waiting
-  assert.strictEqual(l.peek(), 456);
-  assert.strictEqual(l.peek(), 456);
+    const l = lq.join(c.signal);
+    assert.strictEqual(l.peek(), undefined);
 
-  assert.strictEqual(456, await l.next());
+    assert.strictEqual(lq.push(456), false); // not waiting
+    assert.strictEqual(l.peek(), 456);
+    assert.strictEqual(l.peek(), 456);
 
-  let hasValue = false;
-  const pending = l.next();
-  pending.then(() => {
-    hasValue = true;
-  });
-  await timeout(0);
-  assert.strictEqual(hasValue, false);
+    assert.strictEqual(456, await l.next());
 
-  assert.strictEqual(lq.push(789), true);
-  await timeout(0);
-  assert.strictEqual(hasValue, true);
-  assert.strictEqual(await pending, 789);
+    let hasValue = false;
+    const pending = l.next();
+    pending.then(() => {
+      hasValue = true;
+    });
+    await timeout(0);
+    assert.strictEqual(hasValue, false);
 
-  assert.strictEqual(lq.push(0), false); // no-one waiting
-  assert.strictEqual(lq.push(-1), false);
-  assert.strictEqual(lq.push(-2), false);
+    assert.strictEqual(lq.push(789), true);
+    await timeout(0);
+    assert.strictEqual(hasValue, true);
+    assert.strictEqual(await pending, 789);
 
-  assert.deepStrictEqual(await l.batch(), [0, -1, -2]);
+    assert.strictEqual(lq.push(0), false); // no-one waiting
+    assert.strictEqual(lq.push(-1), false);
+    assert.strictEqual(lq.push(-2), false);
+
+    assert.deepStrictEqual(await l.batch(), [0, -1, -2]);
+
+    c.abort();
+  }
 });
