@@ -20,13 +20,17 @@ export function handleAbortSignalAbort(signal: AbortSignal | undefined, fn: () =
  */
 export function promiseForSignal<T = never>(
   signal: AbortSignal,
-  resolveWith: Promise<T> | T = Promise.reject<T>(new Error('aborted')),
+  resolveWith?: Promise<T> | T,
 ): Promise<T> {
+  if (resolveWith === undefined && arguments.length < 2) {
+    // nb. we can't detect `undefined` otherwise, need to look at length
+    resolveWith = Promise.reject<T>(new Error('aborted'));
+  }
   if (signal.aborted) {
-    return Promise.resolve(resolveWith);
+    return Promise.resolve(resolveWith!);
   }
   return new Promise((resolve) => {
-    signal.addEventListener('abort', () => resolve(resolveWith));
+    signal.addEventListener('abort', () => resolve(resolveWith!));
   });
 }
 
