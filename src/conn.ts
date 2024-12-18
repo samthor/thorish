@@ -1,6 +1,6 @@
 import type { WebSocket as NodeWebSocket } from 'ws';
 import { promiseWithResolvers } from './promise.js';
-import { buildEmptyListener, buildLinkQueue, Listener, WorkQueue } from './queue.js';
+import { buildEmptyListener, buildLinkQueue, Listener } from './queue.js';
 
 /**
  * Simple abstract connection between two endpoints. Just sends messages between the endpoints,
