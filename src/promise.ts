@@ -27,6 +27,7 @@ export const timeout = (duration: number) => wrapTrigger(setTimeout, duration);
  * Wraps {@link Promise.withResolvers} with a polyfill.
  */
 export const promiseWithResolvers = /* @__PURE__ */ (() =>
+  // nb. needs fn call as esbuild doesn't understand @__PURE__ otherwise
   Promise.withResolvers
     ? (Promise.withResolvers.bind(Promise) as <T>() => PromiseWithResolvers<T>)
     : function localResolvable<T = void>(): PromiseWithResolvers<T> {
