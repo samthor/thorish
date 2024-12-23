@@ -1,38 +1,35 @@
-
-
 /**
  * Pass to {@link matchPartial} to match any value at a given node. This is {@link Symbol}, but
  * returned as `any` for convenience.
  */
-export const matchAny = Symbol('matchAny') as any;
-
+export const matchAny = /* @__PURE__ */ Symbol('matchAny') as any;
 
 /**
  * Deep partial type. Does not support {@link Function} or similar.
  */
-export type DeepObjectPartial<T> = T extends object ? { [P in keyof T]?: DeepObjectPartial<T[P]>; } : T;
-
+export type DeepObjectPartial<T> = T extends object
+  ? { [P in keyof T]?: DeepObjectPartial<T[P]> }
+  : T;
 
 /**
  * Match the passed object against the filter. This just checks for strict equality.
  */
 export function matchPartial<T>(filter: DeepObjectPartial<T>, object: T): boolean {
   if (object === undefined) {
-    return false;  // can never match
+    return false; // can never match
   } else if (object === filter || filter === matchAny) {
-    return true;  // allow match/any
+    return true; // allow match/any
   } else if (typeof object === 'object' && object) {
     for (const key in filter) {
       if (!matchPartial(filter[key], object[key as any])) {
-        return false;  // part of filter did not match
+        return false; // part of filter did not match
       }
     }
-    return true;  // passed all object checks
+    return true; // passed all object checks
   } else {
-    return false;  // not equal
+    return false; // not equal
   }
 }
-
 
 /**
  * Returns an {@link Array} of all values targeted by {@link matchAny} in a filter. Returns
@@ -44,12 +41,12 @@ export function matchPartial<T>(filter: DeepObjectPartial<T>, object: T): boolea
 export function readMatchAny<T>(filter: DeepObjectPartial<T>, object: T): any[] | void {
   // don't filter for undefined, we need to traverse filter
   if (filter === matchAny) {
-    return [object];  // found an "any" node, return object here
+    return [object]; // found an "any" node, return object here
   } else if (typeof filter === 'object' && filter) {
     // only traverse when filter is non-null object, and object is object OR undefined
     let agg: any[] | undefined;
 
-    const traverseInto = (typeof object === 'object' || object === undefined) ? object : undefined;
+    const traverseInto = typeof object === 'object' || object === undefined ? object : undefined;
     for (const key in filter) {
       const out = readMatchAny(filter[key], traverseInto?.[key as any]);
       if (out) {
@@ -65,12 +62,14 @@ export function readMatchAny<T>(filter: DeepObjectPartial<T>, object: T): any[] 
   }
 }
 
-
 /**
  * Return the parts of a/b that are the same. Otherwise, returns `undefined`. If a/b are the same
  * object, returns that object (same ref).
  */
-export function intersectObjects<T>(a: T | DeepObjectPartial<T> | undefined, b: T | DeepObjectPartial<T> | undefined): DeepObjectPartial<T> | undefined {
+export function intersectObjects<T>(
+  a: T | DeepObjectPartial<T> | undefined,
+  b: T | DeepObjectPartial<T> | undefined,
+): DeepObjectPartial<T> | undefined {
   if (a === b) {
     return a as DeepObjectPartial<T>;
   }
@@ -83,10 +82,9 @@ export function intersectObjects<T>(a: T | DeepObjectPartial<T> | undefined, b: 
         unionObject[key] = out;
       }
     }
-    return unionObject as DeepObjectPartial<T>;  // this will be {} if no keys match - fine
+    return unionObject as DeepObjectPartial<T>; // this will be {} if no keys match - fine
   }
 }
-
 
 /**
  * Intersect many objects together (0-n objects). May return `undefined`. If only one unique object
@@ -106,10 +104,10 @@ export function intersectManyObjects<T>(of: Iterable<T>): DeepObjectPartial<T> |
 
   let ir = iter.next();
   if (ir.done) {
-    return out;  // only one value
+    return out; // only one value
   }
 
-  for (; ;) {
+  for (;;) {
     out = intersectObjects(out as DeepObjectPartial<T>, ir.value);
     if (typeof out !== 'object') {
       return out;
@@ -119,13 +117,12 @@ export function intersectManyObjects<T>(of: Iterable<T>): DeepObjectPartial<T> |
       // hooray, we have at least one key!
       ir = iter.next();
       if (ir.done) {
-        return out;  // no more data
+        return out; // no more data
       }
-      break;  // continue next loop
+      break; // continue next loop
     }
   }
 }
-
 
 /**
  * Call {@link Object.freeze} on this object as well as any of its child objects.

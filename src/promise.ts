@@ -1,7 +1,7 @@
 /**
  * A {@link Promise} that will never resolve.
  */
-export const unresolvedPromise = new Promise<never>(() => {});
+export const unresolvedPromise = /* @__PURE__ */ new Promise<never>(() => {});
 
 /**
  * Wraps a trigger function (e.g., {@link setTimeout} or {@link requestAnimationFrame}) and returns
@@ -26,16 +26,17 @@ export const timeout = (duration: number) => wrapTrigger(setTimeout, duration);
 /**
  * Wraps {@link Promise.withResolvers} with a polyfill.
  */
-export const promiseWithResolvers = Promise.withResolvers
-  ? Promise.withResolvers.bind(Promise) as <T>() => PromiseWithResolvers<T>
-  : function localResolvable<T = void>(): PromiseWithResolvers<T> {
-      let resolve, reject;
-      const promise = new Promise<T>((localResolve, localReject) => {
-        resolve = localResolve;
-        reject = localReject;
-      });
-      return { resolve, reject, promise };
-    };
+export const promiseWithResolvers = /* @__PURE__ */ (() =>
+  Promise.withResolvers
+    ? (Promise.withResolvers.bind(Promise) as <T>() => PromiseWithResolvers<T>)
+    : function localResolvable<T = void>(): PromiseWithResolvers<T> {
+        let resolve, reject;
+        const promise = new Promise<T>((localResolve, localReject) => {
+          resolve = localResolve;
+          reject = localReject;
+        });
+        return { resolve, reject, promise };
+      })();
 
 export const resolvable = promiseWithResolvers;
 

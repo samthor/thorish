@@ -1,6 +1,5 @@
 import { unresolvedPromise } from './promise.js';
 
-
 /**
  * Returns a {@link Promise} that rejects with {@link symbolAbortSignal} when aborted.
  */
@@ -13,8 +12,7 @@ export async function promiseForSignal(signal?: AbortSignal): Promise<never> {
   throw symbolAbortSignal;
 }
 
-
 /**
  * Symbol used in throw/catch blocks.
  */
-export const symbolAbortSignal = Symbol('known');
+export const symbolAbortSignal = /* @__PURE__ */ Symbol('known');

@@ -1,4 +1,6 @@
 src/
 test/
+build-test/
 tsconfig.json
 .*
+*.sh

@@ -92,7 +92,7 @@ export type AsyncGeneratorQueueReturn<T, Y> = {
   done: (arg: Y | Promise<Y>) => void;
 };
 
-const doneSymbol = Symbol('done');
+const doneSymbol = /* @__PURE__ */ Symbol('done');
 
 /**
  * Creates an async generator which emits values pushed into it.
@@ -149,7 +149,7 @@ export function asyncGeneratorQueue<T, Y = void>(): AsyncGeneratorQueueReturn<T,
   };
 }
 
-const doneAsyncGenerator = (async function* () {})() as AsyncGenerator<any>;
+const doneAsyncGenerator = /* @__PURE__ */ (async function* () {})() as AsyncGenerator<any>;
 
 /**
  * Given a {@link AsyncGenerator}, provides a helper which returns 'clones' that will eventually
