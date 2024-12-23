@@ -1,33 +1,33 @@
-import { promiseWithResolvers, unresolvedPromise } from './promise.js';
+import { promiseWithResolvers } from './promise.js';
 import { promiseForSignal } from './signal.js';
 
 export class WorkQueue<T> {
-  #pending: T[] = [];
-  #queue: (() => void)[] = [];
+  private pending: T[] = [];
+  private queue: (() => void)[] = [];
 
-  #releaseActive = false;
-  #releaseTask = Promise.resolve();
+  private releaseActive = false;
+  private releaseTask = Promise.resolve();
 
   /**
    * The {@link WorkQueue} releases waiting tasks one-per-microtask. This maintains the invariant
    * that every time `wait` returns or resolves, there's at least one item in the queue: otherwise,
    * resolving everything at once might allow other waiters to steal all items.
    */
-  #releasePending() {
-    if (this.#releaseActive) {
+  private releasePending() {
+    if (this.releaseActive) {
       return;
     }
 
-    this.#releaseTask = this.#releaseTask.then(async () => {
-      this.#releaseActive = true;
+    this.releaseTask = this.releaseTask.then(async () => {
+      this.releaseActive = true;
       try {
-        while (this.#queue.length && this.#pending.length) {
-          const resolve = this.#queue.shift()!;
+        while (this.queue.length && this.pending.length) {
+          const resolve = this.queue.shift()!;
           resolve();
           await new Promise<void>((r) => queueMicrotask(r));
         }
       } finally {
-        this.#releaseActive = false;
+        this.releaseActive = false;
       }
     });
   }
@@ -38,7 +38,7 @@ export class WorkQueue<T> {
   async *[Symbol.asyncIterator](): AsyncGenerator<T, void, void> {
     for (;;) {
       await this.wait();
-      yield this.#pending.shift()!;
+      yield this.pending.shift()!;
     }
   }
 
@@ -50,7 +50,7 @@ export class WorkQueue<T> {
    * Iterates through the items in this queue, stopping when no more are available synchronously.
    */
   *[Symbol.iterator]() {
-    while (this.#pending.length) {
+    while (this.pending.length) {
       yield this.shift()!;
     }
   }
@@ -60,9 +60,9 @@ export class WorkQueue<T> {
    * the item itself. This returns `undefined` if no waiting is required.
    */
   wait(): void | Promise<void> {
-    if (this.#pending.length === 0) {
+    if (this.pending.length === 0) {
       return new Promise<void>((r) => {
-        this.#queue.push(r);
+        this.queue.push(r);
       });
     }
   }
@@ -73,7 +73,7 @@ export class WorkQueue<T> {
    */
   async next(): Promise<T> {
     await this.wait();
-    return this.#pending.shift()!;
+    return this.pending.shift()!;
   }
 
   /**
@@ -81,16 +81,16 @@ export class WorkQueue<T> {
    */
   push(...items: T[]) {
     try {
-      return this.#pending.push(...items);
+      return this.pending.push(...items);
     } finally {
       if (items.length) {
-        this.#releasePending();
+        this.releasePending();
       }
     }
   }
 
   pop(): T | undefined {
-    return this.#pending.pop();
+    return this.pending.pop();
   }
 
   /**
@@ -98,20 +98,20 @@ export class WorkQueue<T> {
    */
   unshift(...items: T[]) {
     try {
-      return this.#pending.unshift(...items);
+      return this.pending.unshift(...items);
     } finally {
       if (items.length) {
-        this.#releasePending();
+        this.releasePending();
       }
     }
   }
 
   shift(): T | undefined {
-    return this.#pending.shift();
+    return this.pending.shift();
   }
 
   get length() {
-    return this.#pending.length;
+    return this.pending.length;
   }
 }
 

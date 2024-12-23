@@ -158,28 +158,28 @@ const doneAsyncGenerator = /* @__PURE__ */ (async function* () {})() as AsyncGen
  * This should not be used for generators which never complete as every value will be cached here.
  */
 export class AsyncGeneratorCache<T, Y> {
-  #knownValues: T[] = [];
-  #done = false;
-  #doneValue: Y | undefined;
-  #pendingPromise: Promise<void> | undefined;
-  #gen: AsyncGenerator<T, Y, void>;
+  private _knownValues: T[] = [];
+  private _done = false;
+  private doneValue: Y | undefined;
+  private pendingPromise: Promise<void> | undefined;
+  private gen: AsyncGenerator<T, Y, void>;
 
   constructor(gen: AsyncGenerator<T, Y, void>) {
-    this.#gen = gen;
+    this.gen = gen;
   }
 
-  #waitFor() {
-    if (this.#pendingPromise) {
-      return this.#pendingPromise;
+  private waitFor() {
+    if (this.pendingPromise) {
+      return this.pendingPromise;
     }
-    return (this.#pendingPromise = this.#gen.next().then((res) => {
+    return (this.pendingPromise = this.gen.next().then((res) => {
       if (res.done) {
-        this.#done = true;
-        this.#doneValue = res.value;
-        this.#gen = doneAsyncGenerator; // let go of original 'gen'
+        this._done = true;
+        this.doneValue = res.value;
+        this.gen = doneAsyncGenerator; // let go of original 'gen'
       } else {
-        this.#knownValues.push(res.value as T);
-        this.#pendingPromise = undefined;
+        this._knownValues.push(res.value as T);
+        this.pendingPromise = undefined;
       }
     }));
   }
@@ -188,24 +188,24 @@ export class AsyncGeneratorCache<T, Y> {
     let at = 0;
 
     for (;;) {
-      while (at < this.#knownValues.length) {
-        yield this.#knownValues[at];
+      while (at < this._knownValues.length) {
+        yield this._knownValues[at];
         ++at;
       }
-      if (this.#done) {
-        return this.#doneValue;
+      if (this.done) {
+        return this.doneValue;
       }
 
       // We're now waiting for another item, so force calling `gen.next()`.
-      await this.#waitFor();
+      await this.waitFor();
     }
   }
 
   get done() {
-    return this.#done;
+    return this._done;
   }
 
   knownValues(): Readonly<T[]> {
-    return this.#knownValues;
+    return this._knownValues;
   }
 }
