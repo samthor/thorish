@@ -2,13 +2,54 @@
  * Ensures that a passed {@link Function} is called when the given {@link AbortSignal} is aborted.
  *
  * This calls inline if the signal is _already_ aborted.
+ *
+ * @deprecated Use {@link afterSignal}
  */
 export function handleAbortSignalAbort(signal: AbortSignal | undefined, fn: () => any): void {
-  if (signal?.aborted) {
-    fn();
-  } else {
-    signal?.addEventListener('abort', fn);
+  signal && afterSignal(signal, fn);
+}
+
+/**
+ * Configures a function to run after this signal is aborted. This always run in its own microtask
+ * (either as an event handler, or immediately via {@link Promise.resolve}).
+ *
+ * Returns a method which can be used to remove this handler. Returns `true` if it had not yet been
+ * run.
+ */
+export function afterSignal(signal: AbortSignal, fn: () => any): () => boolean {
+  let shouldRun = true;
+
+  if (signal.aborted) {
+    Promise.resolve().then(() => {
+      if (!shouldRun) {
+        return;
+      }
+      shouldRun = false;
+      fn();
+    });
+
+    return () => {
+      try {
+        return shouldRun;
+      } finally {
+        shouldRun = false;
+      }
+    };
   }
+
+  const wrap = () => {
+    shouldRun = false;
+    fn();
+  };
+  signal.addEventListener('abort', wrap);
+  return () => {
+    if (shouldRun) {
+      signal.removeEventListener('abort', wrap); // irony of not using abortsignal is high
+      shouldRun = false;
+      return true;
+    }
+    return false;
+  };
 }
 
 /**
@@ -54,8 +95,14 @@ export function promiseForSignal<T = never>(
  *
  * If any passed signal is already aborted, returns one of them directly (not derived), with a no-op
  * abort function.
+ *
+ * If no signals are passed, acts as a pure convenience over creating a proper
+ * {@link AbortController}, and the result can be destructured.
  */
-export function derivedSignal(...raw: (AbortSignal | undefined)[]) {
+export function derivedSignal(...raw: (AbortSignal | undefined)[]): {
+  signal: AbortSignal;
+  abort: () => void;
+} {
   const previous = raw.filter(Boolean) as AbortSignal[];
 
   const previouslyAborted = previous.find((x) => x.aborted);

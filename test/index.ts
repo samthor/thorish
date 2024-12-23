@@ -2,6 +2,7 @@ import './array.js';
 import './bound-proxy.js';
 import './cond.js';
 import './counter.js';
+import './effect.js';
 import './generator.js';
 import './intermediate.js';
 import './maps.js';
