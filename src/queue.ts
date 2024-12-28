@@ -1,5 +1,5 @@
 import { promiseWithResolvers } from './promise.js';
-import { promiseForSignal } from './signal.js';
+import { promiseVoidForSignal } from './signal.js';
 
 export class WorkQueue<T> {
   private pending: T[] = [];
@@ -272,7 +272,7 @@ class LinkQueueImpl<X> implements LinkQueue<X> {
     return true;
   }
 
-  join(signal) {
+  join(signal?: AbortSignal) {
     let waitNext: () => Promise<void>;
     let ref: QueueRef<X> = this.head;
 
@@ -285,7 +285,7 @@ class LinkQueueImpl<X> implements LinkQueue<X> {
       ref = emptyQueueRef as QueueRef<X>;
     } else {
       // normal signal
-      const signalPromise = promiseForSignal(signal, undefined);
+      const signalPromise = promiseVoidForSignal(signal);
       waitNext = () => Promise.race([signalPromise, this.p!.promise]);
     }
 
@@ -296,16 +296,18 @@ class LinkQueueImpl<X> implements LinkQueue<X> {
         return ref.value;
       }
       async next() {
-        if (signal.aborted) {
+        if (signal?.aborted) {
           return undefined;
         }
 
         let { value } = ref;
         if (value !== undefined) {
+          // we're behind head: move it further, return value
           ref = ref.next!;
           return value;
         }
 
+        // otherwise, we're at head: wait
         outer.p ??= promiseWithResolvers();
         await waitNext();
         return this.next();
@@ -339,7 +341,10 @@ class ArrayQueueImpl<X> implements Queue<X> {
 
     this.head += all.length;
     if (this.subs.size === 0) {
-      this.data.splice(0, this.data.length);
+      // no subs, just nuke data anyway
+      if (this.data.length) {
+        this.data = [];
+      }
       return false;
     }
 
@@ -357,7 +362,7 @@ class ArrayQueueImpl<X> implements Queue<X> {
 
   join(signal: AbortSignal): Listener<X> {
     const outer = this;
-    const signalPromise = promiseForSignal(signal, undefined);
+    const signalPromise = promiseVoidForSignal(signal);
 
     const waitFor = async (cb: (avail: number) => number): Promise<X[]> => {
       for (;;) {
@@ -416,18 +421,23 @@ class ArrayQueueImpl<X> implements Queue<X> {
     return l;
   }
 
-  queueTrimEvents() {
+  private queueTrimEvents() {
     if (this.trimTask) {
       return;
     }
     this.trimTask = true;
+
+    // TODO: should this be configurable? this is really "admin cleanup"
+    const timeoutMs = 250;
+
     setTimeout(() => {
       this.trimTask = false;
 
-      const min = Math.min(...this.subs.values());
+      const min = Math.min(this.head, ...this.subs.values());
       if (min === this.head) {
+        // subs all at head or no subs, nuke all data
         if (this.data.length) {
-          this.data.splice(0, this.data.length);
+          this.data = [];
         }
         return;
       }
@@ -435,7 +445,7 @@ class ArrayQueueImpl<X> implements Queue<X> {
       const start = this.head - this.data.length;
       const strip = min - start;
       this.data.splice(0, strip);
-    }, 250);
+    }, timeoutMs);
   }
 }
 

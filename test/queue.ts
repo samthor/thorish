@@ -163,3 +163,12 @@ test('queue abort', async () => {
 
   assert.strictEqual(await lq.next(), undefined);
 });
+
+test('queue no signal', async () => {
+  const q = buildLinkQueue<number>();
+  const lq = q.join();
+
+  const p = lq.next();
+  q.push(123);
+  assert.strictEqual(await p, 123);
+});
