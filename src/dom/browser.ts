@@ -1,5 +1,10 @@
-import { HtmlState, htmlStateMachine } from '../html-state.ts';
+import { escapeStringFor, HtmlState, preprocessHtmlTemplateTag } from '../html-state.ts';
 
+/**
+ * Simple CSS tagged literal interpolator.
+ *
+ * This actually does NO escaping or tracking of state, so user beware.
+ */
 export function css(arr: TemplateStringsArray, ...rest: string[]): CSSStyleSheet {
   const parts: string[] = [arr[0]];
   for (let i = 1; i < arr.length; ++i) {
@@ -12,11 +17,7 @@ export function css(arr: TemplateStringsArray, ...rest: string[]): CSSStyleSheet
   return styleSheet;
 }
 
-let temporaryHtmlEscaper: Element | undefined;
-
 /**
- * Simple HTML interpolator.
- *
  * Naïvely builds a {@link DocumentFragment} with interpolated HTML-safe strings/etc.
  *
  * This has basic support for interpolating tag values and within comments etc.
@@ -24,21 +25,18 @@ let temporaryHtmlEscaper: Element | undefined;
  * It probably would not survive untrusted user input.
  */
 export function html(arr: TemplateStringsArray, ...rest: (string | number | Node)[]) {
-  if (temporaryHtmlEscaper === undefined) {
-    temporaryHtmlEscaper = document.createElement('span');
-  }
-
   const idToReplace = new Map<string, Node>();
-  const sm = htmlStateMachine();
+  const states = preprocessHtmlTemplateTag(arr);
 
   const parts: string[] = [];
 
-  for (let i = 0; ; ++i) {
+  for (let i = 0; i < states.length; ++i) {
     parts.push(arr[i]);
-    if (i + 1 === arr.length) {
-      break; // no more inner to process
+    if (i === rest.length) {
+      break; // no more data to process (last one is a gimme)
     }
-    const state = sm.consume(arr[i]);
+
+    const state = states[i];
 
     const inner = rest[i];
     if (inner instanceof Node) {
@@ -52,33 +50,7 @@ export function html(arr: TemplateStringsArray, ...rest: (string | number | Node
       continue;
     }
 
-    const s = String(inner);
-    if (state === HtmlState.TextOnlyClose) {
-      if (s.includes(sm.closedBy)) {
-        throw new Error(`can't inline text: contains closer=${sm.closedBy}`);
-      }
-      parts.push(s);
-      continue;
-    }
-
-    temporaryHtmlEscaper.textContent = s;
-    const escaped = temporaryHtmlEscaper.innerHTML;
-
-    switch (state) {
-      case HtmlState.WithinTag:
-        throw new Error(`unsupported interpolation within <tag>`);
-
-      case HtmlState.TagAttr:
-        parts.push(`"${escaped}"`);
-        continue;
-
-      case HtmlState.WithinTagAttr:
-      case HtmlState.Normal:
-        parts.push(escaped);
-        continue;
-    }
-
-    throw new Error(`should not get here`);
+    parts.push(escapeStringFor(state, inner));
   }
   temporaryHtmlEscaper.textContent = '';
 
@@ -100,11 +72,26 @@ export function html(arr: TemplateStringsArray, ...rest: (string | number | Node
   return frag;
 }
 
+/**
+ * Builds a tool which clones the given fragment/styles onto the target {@link HTMLElement} as a {@link ShadowRoot}.
+ *
+ * Basically for CE constructors.
+ */
 export function buildShadow(src: DocumentFragment, ...styles: CSSStyleSheet[]) {
-  return (target: HTMLElement): ShadowRoot => {
+  return (target: Element): ShadowRoot => {
     const root = target.attachShadow({ mode: 'open' });
     root.append(src.cloneNode(true));
     root.adoptedStyleSheets = styles;
     return root;
   };
+}
+
+const temporaryHtmlEscaper: Element = /* @__PURE__ */ document.createElement('span');
+
+/**
+ * Escapes basic HTML entities. (Does not escape `"` or `'`).
+ */
+export function escapeHtmlEntites(s: string): string {
+  temporaryHtmlEscaper.textContent = s;
+  return temporaryHtmlEscaper.innerHTML;
 }

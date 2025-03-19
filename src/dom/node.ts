@@ -9,3 +9,7 @@ export function html(arr: TemplateStringsArray, ...rest: (string | number | Node
 export function buildShadow(src: DocumentFragment, ...styles: CSSStyleSheet[]) {
   throw new Error(`buildShadow not in node`);
 }
+
+export function escapeHtmlEntites(str: string): string {
+  return str.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}

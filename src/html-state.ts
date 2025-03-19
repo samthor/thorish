@@ -1,18 +1,152 @@
+import { escapeHtmlEntites } from '#dom';
+
 export enum HtmlState {
-  Normal = 0, // outside tags
-  TextOnlyClose = 1, // within <script>, <style> or a comment; tags not allowed except the matching closer
-  WithinTag = 2, // within `<script ... `>
-  TagAttr = 3, // sitting directly after `=`
-  WithinTagAttr = 4, // sitting within quoted string for attr `key="foo"`
+  /**
+   * Normal HTML state. Regular content allowed here.
+   */
+  Normal = 0,
+
+  /**
+   * Within a tag declaration, e.g. `<foo ...`, but not yet within an attribute.
+   */
+  WithinTag = 2,
+
+  /**
+   * Sitting directly after a `=` within a tag not followed by a quote.
+   */
+  TagAttr = 3,
+
+  /**
+   * Within a comment started with `<!--`.
+   */
+  WithinComment = 9,
+
+  /**
+   * Within a `<script>` tag. Important as it must be closed by `</script>`.
+   */
+  WithinScriptTag = 10,
+
+  /**
+   * Within a `<style>` tag. Important as it must be closed by `</style>`.
+   */
+  WithinStyleTag = 11,
+
+  /**
+   * Within a tag started by `"`.
+   */
+  WithinTagAttrDoubleQuote = 17,
+
+  /**
+   * Within a tag started by `'`.
+   */
+  WithinTagAttrSingleQuote = 18,
 }
 
 const nextRe = /<(\!--|\w+)/;
 
 const withinTagNext = /(=?\'|=?\"|=|>|\/\>)/;
 
+const closedByRe = /^\s*>/;
+
+export function indexOfCloserWithinTagLike(state: HtmlState, check: string) {
+  let find: string;
+  switch (state) {
+    case HtmlState.WithinComment: {
+      const index = check.indexOf('-->');
+      if (index === -1) {
+        return -1;
+      }
+      return index + 3;
+    }
+
+    case HtmlState.WithinScriptTag:
+      find = '</script';
+      break;
+
+    case HtmlState.WithinStyleTag:
+      find = '</style';
+      break;
+
+    default:
+      return -1;
+  }
+
+  let out = check.indexOf(find);
+  if (out === -1) {
+    return -1;
+  }
+  out += find.length;
+
+  // we are "<script", look for spaces and closing ">"
+  const rest = check.substring(out);
+  if (!closedByRe.test(rest)) {
+    return -1;
+  }
+  const indexOfEnd = rest.indexOf('>');
+  if (indexOfEnd === -1) {
+    throw new Error(`should never happen`);
+  }
+  return out + indexOfEnd + 1;
+}
+
+/**
+ * Escapes the given raw string for its placement within HTML based on the given state.
+ *
+ * This may throw in two cases:
+ *    - state is `HtmlState.Within...` and the text contains the closer (dangerous)
+ *    - state is {@link HtmlState.WithinTag}, no valid/obvious interpolation (TODO: could allow valid attr names)
+ */
+export function escapeStringFor(state: HtmlState, s: string | number) {
+  s = String(s);
+
+  if (indexOfCloserWithinTagLike(state, s) !== -1) {
+    // e.g., if the text you're inlining in a comment includes "-->", disallow it
+    // or "</script>" inside "<script>...</script>"
+    let msg: string = '?';
+    switch (state) {
+      case HtmlState.WithinComment:
+        msg = '-->';
+        break;
+      case HtmlState.WithinScriptTag:
+        msg = '</script>';
+        break;
+      case HtmlState.WithinStyleTag:
+        msg = '</style>';
+        break;
+    }
+    throw new Error(`can't inline text: dangerously contains closer "${msg}"`);
+  }
+
+  switch (state) {
+    case HtmlState.WithinComment:
+    case HtmlState.WithinScriptTag:
+    case HtmlState.WithinStyleTag:
+      // safe because of indexOfCloserWithinTagLike above
+      return s;
+  }
+
+  const escaped = escapeHtmlEntites(s);
+  switch (state) {
+    case HtmlState.WithinTag:
+      throw new Error(`unsupported interpolation within <tag>`);
+
+    case HtmlState.TagAttr:
+      return `"${escaped.replaceAll('"', '&quot;')}"`;
+
+    case HtmlState.WithinTagAttrDoubleQuote:
+      return escaped.replaceAll('"', '&quot;');
+
+    case HtmlState.WithinTagAttrSingleQuote:
+      return escaped.replaceAll("'", '&apos;');
+
+    case HtmlState.Normal:
+      return escaped;
+  }
+}
+
 export function htmlStateMachine() {
   let state: HtmlState = HtmlState.Normal;
-  let closedBy = '';
+  let upcomingWithinTag = '';
 
   const internalConsume = (next: string) => {
     if (!next) {
@@ -26,12 +160,13 @@ export function htmlStateMachine() {
         return internalConsume(next);
       }
 
-      case HtmlState.WithinTagAttr: {
-        const escapeIndex = next.indexOf(closedBy);
+      case HtmlState.WithinTagAttrDoubleQuote:
+      case HtmlState.WithinTagAttrSingleQuote: {
+        const search = state === HtmlState.WithinTagAttrDoubleQuote ? '"' : "'";
+        const escapeIndex = next.indexOf(search);
         if (escapeIndex === -1) {
           return;
         }
-        closedBy = '';
         state = HtmlState.WithinTag;
         return internalConsume(next.substring(escapeIndex + 1));
       }
@@ -45,15 +180,27 @@ export function htmlStateMachine() {
         switch (m[1]) {
           case '/>':
           case '>':
-            state = closedBy ? HtmlState.TextOnlyClose : HtmlState.Normal;
+            switch (upcomingWithinTag) {
+              case 'script':
+                state = HtmlState.WithinScriptTag;
+                break;
+              case 'style':
+                state = HtmlState.WithinStyleTag;
+                break;
+              default:
+                state = HtmlState.Normal;
+            }
+            upcomingWithinTag = '';
             break;
 
           case `='`:
-          case `="`:
           case `'`:
+            state = HtmlState.WithinTagAttrSingleQuote;
+            break;
+
+          case `="`:
           case `"`:
-            closedBy = m[1].substring(m[1].length - 1);
-            state = HtmlState.WithinTagAttr;
+            state = HtmlState.WithinTagAttrDoubleQuote;
             break;
 
           case '=':
@@ -75,47 +222,31 @@ export function htmlStateMachine() {
 
         if (m[1] === '!--') {
           // found comment
-          state = HtmlState.TextOnlyClose;
-          closedBy = '-->';
+          state = HtmlState.WithinComment;
           return internalConsume(next.substring(m.index));
         }
-
-        if (m[1] === 'script' || m[1] === 'style') {
-          closedBy = `</${m[1]}`;
-        }
+        upcomingWithinTag = m[1];
 
         state = HtmlState.WithinTag;
         return internalConsume(next.substring(m.index + m[1].length));
       }
 
-      case HtmlState.TextOnlyClose: {
-        if (!closedBy) {
-          throw new Error(`missing closedBy`);
-        }
-        const index = next.indexOf(closedBy);
+      case HtmlState.WithinComment:
+      case HtmlState.WithinScriptTag:
+      case HtmlState.WithinStyleTag: {
+        const index = indexOfCloserWithinTagLike(state, next);
         if (index === -1) {
-          return;
+          return; // no state change
         }
-        next = next.substring(index + closedBy.length);
-
-        if (!closedBy.endsWith('>')) {
-          // consume e.g., "</script   >" (space allowed)
-          while (next[0] === ' ') {
-            next = next.substring(1);
-          }
-          if (next[0] !== '>') {
-            return internalConsume(next);
-          }
-          next = next.substring(1);
-        }
-
         state = HtmlState.Normal;
-        closedBy = '';
+        next = next.substring(index);
         return internalConsume(next);
       }
 
-      default:
+      default: {
+        const x: never = state;
         throw new Error(`unhandled state: ${state}`);
+      }
     }
   };
 
@@ -124,11 +255,29 @@ export function htmlStateMachine() {
       internalConsume(next);
       return state;
     },
-    get closedBy(): string {
-      if (closedBy !== '-->') {
-        return closedBy + '>';
-      }
-      return closedBy;
-    },
   };
+}
+
+const preprocessCache = /* @__PURE__ */ new WeakMap<TemplateStringsArray, readonly HtmlState[]>();
+
+export function preprocessHtmlTemplateTag(arr: TemplateStringsArray): readonly HtmlState[] {
+  const prev = preprocessCache.get(arr);
+  if (prev) {
+    return prev;
+  }
+
+  const sm = htmlStateMachine();
+  const states: HtmlState[] = [];
+
+  for (let i = 0; ; ++i) {
+    if (i + 1 === arr.length) {
+      break; // no more inner to process
+    }
+    const state = sm.consume(arr[i]);
+    states.push(state);
+  }
+
+  const f = Object.freeze(states);
+  preprocessCache.set(arr, f);
+  return f;
 }
