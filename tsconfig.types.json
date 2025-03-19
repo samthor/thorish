@@ -5,8 +5,8 @@
     "emitDeclarationOnly": true,
     "declaration": true,
     "outDir": "dist/types",
-    "rootDir": "./src/"
+    "rootDir": "./"
   },
-  "files": ["src/index.ts"],
-  "include": [],
+  "files": ["./index.ts"],
+  "include": []
 }

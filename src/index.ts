@@ -24,6 +24,4 @@ export * from './stream.js';
 export * from './task.js';
 export * from './types.js';
 
-export { concatBytes, base64ToBytes } from './support/index.js';
-
-export type * from './dom/browser.ts';
+export * from '#support';
