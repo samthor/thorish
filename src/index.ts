@@ -24,4 +24,4 @@ export * from './stream.js';
 export * from './task.js';
 export * from './types.js';
 
-export * from '#support';
+// does not export #dom, because tsc hates us; we add that in "../entrypoint.ts"

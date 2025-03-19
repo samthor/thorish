@@ -9,8 +9,8 @@
   "type": "module",
   "scripts": {
     "test": "tsx test/",
-    "build:dist-node": "esbuild src/index.ts --format=esm --platform=node --outfile=dist/node.esm.js --bundle --sourcemap",
-    "build:dist-browser": "esbuild src/index.ts --format=esm --platform=browser --outfile=dist/browser.esm.js --bundle --sourcemap",
+    "build:dist-node": "esbuild entrypoint.ts --format=esm --platform=node --outfile=dist/node.esm.js --bundle --sourcemap",
+    "build:dist-browser": "esbuild entrypoint.ts --format=esm --platform=browser --outfile=dist/browser.esm.js --bundle --sourcemap",
     "build:types": "tsc -p tsconfig.types.json",
     "build:test": "./build-test.sh",
     "build": "rm -rf dist; pnpm run build:dist-node && pnpm run build:dist-browser && pnpm run build:types && pnpm run build:test",
@@ -40,7 +40,7 @@
   },
   "name": "thorish",
   "description": "This is a library of useful JS concepts and data structures for Node and the browser. It it, unashamedly, a dumping ground for code needed by [@samthor](https://twitter.com/samthor)'s projects.",
-  "version": "1.1.30",
+  "version": "1.1.31",
   "directories": {
     "test": "test"
   },
