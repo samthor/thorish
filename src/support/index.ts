@@ -1,8 +1,7 @@
+export * from '#dom';
 
-// @ts-ignore tsc on command-line is unhappy
 export { concatBytes, base64ToBytes } from '#support';
 
-// @ts-ignore tsc on command-line is unhappy
 import * as fake from '#support';
 
 export const isArrayEqualIsh = fake.isArrayEqualIsh;
@@ -12,11 +11,12 @@ const fauxStructuredClone = (o: any) => {
     return o;
   }
 
-  const out = {...o};
+  const out = { ...o };
   for (const k in out) {
-    out[k] = fauxStructuredClone(out[k])
+    out[k] = fauxStructuredClone(out[k]);
   }
   return out;
 };
 
-export const structuredIshClone: <T> (o: T) => T = (typeof structuredClone === 'function') ? structuredClone : fauxStructuredClone;
+export const structuredIshClone: <T>(o: T) => T =
+  typeof structuredClone === 'function' ? structuredClone : fauxStructuredClone;

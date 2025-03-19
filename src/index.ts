@@ -7,6 +7,7 @@ export * from './counter.js';
 export * from './effect.js';
 export * from './expirable.js';
 export * from './generator.js';
+export * from './html-state.js';
 export * from './intermediate.js';
 export * from './maps.js';
 export * from './matcher.js';
@@ -24,3 +25,5 @@ export * from './task.js';
 export * from './types.js';
 
 export { concatBytes, base64ToBytes } from './support/index.js';
+
+export type * from './dom/browser.ts';

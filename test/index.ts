@@ -4,6 +4,7 @@ import './cond.js';
 import './counter.js';
 import './effect.js';
 import './generator.js';
+import './html-state.js';
 import './intermediate.js';
 import './maps.js';
 import './matcher.js';
