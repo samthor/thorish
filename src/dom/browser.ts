@@ -29,7 +29,7 @@ export function html(arr: TemplateStringsArray, ...rest: (string | number | Node
   const idToReplace = new Map<string, Node>();
   const states = preprocessHtmlTemplateTag(arr);
 
-  if (states.length !== arr.length || states.length !== rest.length) {
+  if (states.length + 1 !== arr.length || states.length !== rest.length) {
     // internal error really
     throw new Error(`unexpected html tag length`);
   }
