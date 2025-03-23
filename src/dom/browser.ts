@@ -29,13 +29,15 @@ export function html(arr: TemplateStringsArray, ...rest: (string | number | Node
   const idToReplace = new Map<string, Node>();
   const states = preprocessHtmlTemplateTag(arr);
 
+  if (states.length !== arr.length || states.length !== rest.length) {
+    // internal error really
+    throw new Error(`unexpected html tag length`);
+  }
+
   const parts: string[] = [];
 
   for (let i = 0; i < states.length; ++i) {
     parts.push(arr[i]);
-    if (i === rest.length) {
-      break; // no more data to process (last one is a gimme)
-    }
 
     const state = states[i];
 
@@ -53,7 +55,7 @@ export function html(arr: TemplateStringsArray, ...rest: (string | number | Node
 
     parts.push(escapeStringFor(state, inner));
   }
-  temporaryHtmlEscaper.textContent = '';
+  parts.push(arr[arr.length - 1]); // last one is always a gimme
 
   const node = document.createElement('div');
   node.innerHTML = parts.join('');
