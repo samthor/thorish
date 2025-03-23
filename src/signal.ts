@@ -1,15 +1,4 @@
 /**
- * Ensures that a passed {@link Function} is called when the given {@link AbortSignal} is aborted.
- *
- * This calls inline if the signal is _already_ aborted.
- *
- * @deprecated Use {@link afterSignal}
- */
-export function handleAbortSignalAbort(signal: AbortSignal | undefined, fn: () => any): void {
-  signal && afterSignal(signal, fn);
-}
-
-/**
  * Configures a function to run after this signal is aborted. This always run in its own microtask
  * (either as an event handler, or immediately via {@link Promise.resolve}).
  *
@@ -115,3 +104,12 @@ export function derivedSignal(...raw: (AbortSignal | undefined)[]): {
   previous.forEach((p) => p.addEventListener('abort', abort));
   return { signal: c.signal, abort };
 }
+
+/**
+ * An already aborted signal.
+ */
+export const abortedSignal = /* @__PURE__ */ (() => {
+  const c = new AbortController();
+  c.abort();
+  return c.signal;
+})();

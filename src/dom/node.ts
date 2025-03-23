@@ -13,3 +13,9 @@ export function buildShadow(src: DocumentFragment, ...styles: CSSStyleSheet[]) {
 export function escapeHtmlEntites(str: string): string {
   return str.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
+
+export abstract class SignalHTMLElement {
+  constructor() {
+    throw new Error(`SignalHTMLElement not in node`);
+  }
+}

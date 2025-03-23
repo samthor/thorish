@@ -1,4 +1,5 @@
 import { escapeStringFor, HtmlState, preprocessHtmlTemplateTag } from '../html-state.ts';
+import { abortedSignal } from '../signal.ts';
 
 /**
  * Simple CSS tagged literal interpolator.
@@ -94,4 +95,55 @@ const temporaryHtmlEscaper: Element = /* @__PURE__ */ document.createElement('sp
 export function escapeHtmlEntites(s: string): string {
   temporaryHtmlEscaper.textContent = s;
   return temporaryHtmlEscaper.innerHTML;
+}
+
+/**
+ * Simple HTML superclass which provides an abstract {@link SignalHTMLElement#refresh} method which is called when the element is mounted.
+ *
+ * Call the protected method {@link SignalHTMLElement#invalidate} to trigger a refresh manually (e.g., some important value has changed).
+ */
+export abstract class SignalHTMLElement extends HTMLElement {
+  private abort = () => {};
+  private signal: AbortSignal = abortedSignal;
+
+  connectedCallback() {
+    this.maybeRefresh();
+  }
+
+  disconnectedCallback() {
+    if (this.parentNode && !this.reparentShouldInvalidate()) {
+      // we're about to have connectedCallback() fired, don't abort
+    } else {
+      this.abort();
+    }
+  }
+
+  /**
+   * Call to cause a refresh, e.g., some value has changed.
+   */
+  protected invalidate() {
+    this.abort();
+    this.maybeRefresh();
+  }
+
+  /**
+   * Return `true` if this should cause a refresh/signal to be aborted.
+   */
+  protected reparentShouldInvalidate(): boolean {
+    return false;
+  }
+
+  private maybeRefresh() {
+    if (!this.parentNode || !this.signal.aborted) {
+      return;
+    }
+
+    const c = new AbortController();
+    this.signal = c.signal;
+    this.abort = () => c.abort();
+
+    this.refresh(this.signal);
+  }
+
+  protected abstract refresh(signal: AbortSignal): void;
 }
