@@ -1,6 +1,8 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { namedListeners, namedListenersToEventTarget, soloListener } from '../src/listener.ts';
+import { namedListeners, soloListener } from '../src/listener.ts';
+import { neverAbortedSignal } from '../src/signal.ts';
+import { timeout } from '../src/promise.ts';
 
 test('always unique', () => {
   const l = soloListener<void>();
@@ -66,18 +68,46 @@ test('et behavior', () => {
 });
 
 test('wrap et', () => {
-  const nl = namedListeners<{ x: number }>();
-  const et = namedListenersToEventTarget(nl);
+  const nl = namedListeners<{ x: number; y: boolean }>();
+  const et = nl.eventTarget();
+
+  let anySetupCalls = 0;
+  nl.any(
+    'x',
+    (signal) => {
+      ++anySetupCalls;
+    },
+    neverAbortedSignal,
+  );
 
   let count = 0;
 
-  et.addEventListener('x', (raw) => {
-    const ce = raw as CustomEvent<number>;
-    assert.strictEqual(ce.detail, 123);
-    ++count;
-  });
+  const c = new AbortController();
+  et.addEventListener(
+    'x',
+    (raw) => {
+      const ce = raw as CustomEvent<number>;
+      assert.strictEqual(ce.detail, 123);
+      ++count;
+    },
+    { signal: c.signal },
+  );
+  assert.strictEqual(anySetupCalls, 1);
 
   nl.dispatch('x', 123);
   nl.dispatch('x', 123);
   assert.strictEqual(count, 2);
+  c.abort();
+
+  const typedTarget = nl.eventTarget<{
+    y: Event; // y is a superclass of the default CustomEvent<...>
+  }>();
+
+  typedTarget.addEventListener('x', (e) => {
+    assert.strictEqual(e.detail, 345);
+    ++count;
+  });
+  assert.strictEqual(anySetupCalls, 2); // called again
+  nl.dispatch('x', 345);
+  assert.strictEqual(count, 3);
 });

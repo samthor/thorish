@@ -1,17 +1,45 @@
-import { derivedSignal, neverAbortedSignal } from './signal.ts';
+import { abortedSignal, derivedSignal, neverAbortedSignal } from './signal.ts';
 
 export type NamedListeners<T extends Record<string, any>> = {
+  /**
+   * Adds a listener for the given event. You must provide a {@link AbortSignal}.
+   */
   addListener<K extends keyof T>(
     name: K,
     listener: (data: T[K]) => void,
     signal: AbortSignal,
   ): void;
+
+  /**
+   * Dispatches an event to listeners.
+   *
+   * Returns `true` if any listeners were invoked.
+   */
   dispatch<K extends keyof T>(name: K, arg: T[K]): boolean;
+
+  /**
+   * Runs a handler when any listeners are defined for the given name.
+   */
+  any<K extends keyof T>(name: K, handler: (signal: AbortSignal) => void, signal: AbortSignal);
+
+  /**
+   * Converts this {@link NamedListeners} to an {@link EventTarget}.
+   *
+   * The types here a bit funky.
+   * You need to specify the types as a template parameter and ALSO provide a builder in the argument.
+   */
+  eventTarget<X extends Partial<Record<keyof T, Event>>>(arg?: {
+    signal?: AbortSignal;
+    buildEvent?: <T extends keyof X>(type: T, arg: X[T]) => Event | undefined; // TODO: not inferred as well as we'd like
+  }): InstanceType<
+    AddEvents<typeof EventTarget, { [Q in keyof T]: Q extends keyof X ? X[Q] : CustomEvent<T[Q]> }>
+  >;
 };
 
 export type SoloListener<V> = {
   addListener(listener: (data: V) => void, signal: AbortSignal): void;
   dispatch(data: V): boolean;
+  any(handler: (signal: AbortSignal) => void, signal: AbortSignal);
 };
 
 /**
@@ -20,7 +48,29 @@ export type SoloListener<V> = {
  * This is a simpler version of something with {@link EventTarget}-like semantics.
  */
 export function namedListeners<T extends Record<string, any>>(): NamedListeners<T> {
-  const listeners = new Map<keyof T, Set<(data: any) => void>>();
+  const listeners = new Map<
+    keyof T,
+    {
+      listeners: Set<(data: any) => void>;
+      any: Set<(signal: AbortSignal) => void>;
+      activeSignal: AbortSignal;
+      abort: () => void;
+    }
+  >();
+
+  const ensureListener = <K extends keyof T>(type: K) => {
+    let s = listeners.get(type);
+    if (s === undefined) {
+      s = {
+        listeners: new Set(),
+        any: new Set(),
+        activeSignal: abortedSignal,
+        abort: () => {},
+      };
+      listeners.set(type, s);
+    }
+    return s;
+  };
 
   return {
     addListener(name, listener, signal) {
@@ -28,25 +78,56 @@ export function namedListeners<T extends Record<string, any>>(): NamedListeners<
         return;
       }
 
-      let s = listeners.get(name);
-      if (s === undefined) {
-        s = new Set();
-        listeners.set(name, s);
-      }
+      const state = ensureListener(name);
 
-      if (s.has(listener)) {
+      if (state.listeners.has(listener)) {
         const original = listener;
         listener = (arg) => original(arg);
+      } else if (state.listeners.size === 0) {
+        const c = new AbortController();
+        state.activeSignal = c.signal;
+        state.abort = () => c.abort();
+        state.any.forEach((l) => l(state.activeSignal));
       }
 
-      signal.addEventListener('abort', () => s.delete(listener));
-      s.add(listener);
+      signal.addEventListener('abort', () => {
+        state.listeners.delete(listener);
+        if (state.listeners.size === 0) {
+          state.abort();
+        }
+      });
+      state.listeners.add(listener);
+    },
+
+    any(name, callback, signal) {
+      if (signal.aborted) {
+        return;
+      }
+
+      const state = ensureListener(name);
+
+      if (state.any.has(callback)) {
+        const original = callback;
+        callback = (arg) => original(arg);
+      }
+      state.any.add(callback);
+
+      signal.addEventListener('abort', () => state.any.delete(callback));
+
+      if (state.listeners.size) {
+        // trigger immediately if active
+        callback(derivedSignal(state.activeSignal, signal).signal);
+      }
     },
 
     dispatch(name, arg) {
       const s = listeners.get(name);
-      s?.forEach((l) => l(arg));
-      return Boolean(s?.size);
+      s?.listeners.forEach((l) => l(arg));
+      return Boolean(s?.listeners.size);
+    },
+
+    eventTarget(arg) {
+      return namedListenersToEventTarget(this as any, arg) as any;
     },
   };
 }
@@ -64,6 +145,9 @@ export function soloListenerFrom<T extends Record<string, any>, K extends keyof 
     },
     dispatch(v: T[K]) {
       return nl.dispatch(name, v);
+    },
+    any(callback, signal) {
+      nl.any(name, callback, signal);
     },
   };
 }
@@ -125,7 +209,7 @@ function buildForRef(
  *
  * This object cannot be used to dispatch events, only {@link EventTarget#addEventListener} and {@link EventTarget#removeEventListener}.
  */
-export function namedListenersToEventTarget<T extends Record<string, any>>(
+function namedListenersToEventTarget<T extends Record<string, any>>(
   nl: NamedListeners<T>,
   opts?: {
     signal?: AbortSignal;
@@ -197,3 +281,43 @@ export function namedListenersToEventTarget<T extends Record<string, any>>(
     },
   };
 }
+
+//// --- type stuff ----
+
+// From here:
+// https://fettblog.eu/typescript-union-to-intersection/
+type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any
+  ? R
+  : never;
+
+/**
+ * Generates a type which provides a highly specific addEventListener/removeEventListener. This is
+ * required due to TS' resolution rules which place string literals first.
+ */
+type ExpandEventsInternal<K extends keyof T, T, This> = K extends string
+  ? {
+      addEventListener(
+        type: K,
+        listener: (this: EventTarget, ev: T[K]) => any,
+        options?: boolean | AddEventListenerOptions,
+      ): void;
+      removeEventListener(
+        type: K,
+        listener: (this: EventTarget, ev: T[K]) => any,
+        options?: boolean | AddEventListenerOptions,
+      ): void;
+    }
+  : never;
+
+/**
+ * This expands the events specified in the template type map.
+ */
+type ExpandEvents<T, This> = UnionToIntersection<ExpandEventsInternal<keyof T, T, This>>;
+
+/**
+ * Creates a constructor which includes expanded events as well as the original type.
+ */
+type AddEvents<
+  X extends abstract new (...args: any[]) => InstanceType<X> extends EventTarget ? any : never,
+  T,
+> = new (...args: ConstructorParameters<X>) => ExpandEvents<T, X> & InstanceType<X>;
