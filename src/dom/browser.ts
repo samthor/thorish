@@ -81,8 +81,22 @@ export function html(arr: TemplateStringsArray, ...rest: (string | number | Node
  * Basically for CE constructors.
  */
 export function buildShadow(src: DocumentFragment, ...styles: CSSStyleSheet[]) {
+  return buildShadowOptions({}, src, ...styles);
+}
+
+/**
+ * Builds a tool which clones the given fragment/styles onto the target {@link HTMLElement} as a {@link ShadowRoot}.
+ *
+ * Basically for CE constructors.
+ * Allows basic configuration.
+ */
+export function buildShadowOptions(
+  options: { delegatesFocus?: boolean },
+  src: DocumentFragment,
+  ...styles: CSSStyleSheet[]
+) {
   return (target: Element): ShadowRoot => {
-    const root = target.attachShadow({ mode: 'open' });
+    const root = target.attachShadow({ mode: 'open', delegatesFocus: options.delegatesFocus });
     root.append(src.cloneNode(true));
     root.adoptedStyleSheets = styles;
     return root;
