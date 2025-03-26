@@ -117,4 +117,4 @@ export const abortedSignal = /* @__PURE__ */ (() => {
 /**
  * A never aborted signal.
  */
-export const neverAbortedSignal = /* @__PURE__ */ new AbortController().signal;
+export const neverAbortedSignal = /* @__PURE__ */ (() => new AbortController().signal)();
