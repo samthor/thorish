@@ -4,6 +4,11 @@
 export const unresolvedPromise = /* @__PURE__ */ new Promise<never>(() => {});
 
 /**
+ * A {@link Promise} that is already resolved.
+ */
+export const resolvedPromise = /* @__PURE__ */ Promise.resolve<void>(undefined);
+
+/**
  * Wraps a trigger function (e.g., {@link setTimeout} or {@link requestAnimationFrame}) and returns
  * a {@link Promise} that resolves when it is fired.
  *

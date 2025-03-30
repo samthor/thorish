@@ -1,3 +1,5 @@
+import { resolvedPromise } from '../promise.ts';
+
 /**
  * This is good enough for the matcher "any" stuff.
  */
@@ -55,3 +57,15 @@ export function concatBytes(chunks: Uint8Array[]) {
 
   return out;
 }
+
+export const nextTick = /* @__PURE__ */ (() => {
+  const isIOS = /iphone|ipad|ipod|ios/.test(window.navigator.userAgent);
+  const noop = () => {};
+
+  return (cb: () => {}) => {
+    resolvedPromise.then(cb);
+    if (isIOS) {
+      setTimeout(noop);
+    }
+  };
+})();

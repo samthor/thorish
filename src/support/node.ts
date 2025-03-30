@@ -7,3 +7,5 @@ export function base64ToBytes(s: string): Uint8Array {
 export function concatBytes(chunks: Uint8Array[]): Uint8Array {
   return Buffer.concat(chunks) as Uint8Array;
 }
+
+export const nextTick = /* @__PURE__ */ (() => process.nextTick as (callback: () => {}) => void)();

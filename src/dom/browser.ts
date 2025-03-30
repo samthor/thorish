@@ -1,4 +1,5 @@
 import { escapeStringFor, HtmlState, preprocessHtmlTemplateTag } from '../html-state.ts';
+import { resolvedPromise } from '../promise.ts';
 import { abortedSignal } from '../signal.ts';
 
 /**
@@ -127,7 +128,7 @@ export abstract class SignalHTMLElement extends HTMLElement {
   }
 
   disconnectedCallback() {
-    if (this.parentNode && !this.reparentShouldInvalidate()) {
+    if (this.isConnected && !this.reparentShouldInvalidate()) {
       // we're about to have connectedCallback() fired, don't abort
     } else {
       this.abort();
@@ -150,7 +151,7 @@ export abstract class SignalHTMLElement extends HTMLElement {
   }
 
   private maybeRefresh() {
-    if (!this.parentNode || !this.signal.aborted) {
+    if (!this.isConnected || !this.signal.aborted) {
       return;
     }
 
