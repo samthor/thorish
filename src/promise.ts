@@ -113,7 +113,7 @@ export function buildCallTrain<R>(fn: () => Promise<R>): () => Promise<R> {
  *
  * If the second parameter is true, queues the callback under {@link requestAnimationFrame} immediately.
  */
-export function rafRunner(callback: () => {}, immediate?: boolean) {
+export function rafRunner(callback: () => void, immediate?: boolean) {
   // TODO: not really a promise, should not be in this file
   let active = false;
   const o = () => {

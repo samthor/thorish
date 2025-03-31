@@ -1,4 +1,3 @@
-
 import test from 'node:test';
 import * as assert from 'node:assert';
 import * as promise from '../src/promise.js';
@@ -11,7 +10,12 @@ test('setTimeout', async () => {
 
 test('spliceNextPromise', async () => {
   const unresolvedPromise = Promise.race([]);
-  const arr = [unresolvedPromise, unresolvedPromise, Promise.resolve('this_one'), unresolvedPromise];
+  const arr = [
+    unresolvedPromise,
+    unresolvedPromise,
+    Promise.resolve('this_one'),
+    unresolvedPromise,
+  ];
   assert.strictEqual(arr.length, 4);
 
   const out = await promise.spliceNextPromise(arr);
@@ -38,4 +42,39 @@ test('buildCallTrain', async () => {
   const r3 = await c3;
   const r4 = await c4;
   assert.deepStrictEqual([r3, r4], [2, 2]);
+});
+
+test('rafRunner', async () => {
+  let usePolyfill = false;
+  try {
+    if (typeof requestAnimationFrame !== 'function') {
+      global.requestAnimationFrame = (c) => setTimeout(c, 0);
+      usePolyfill = true;
+    }
+
+    let count = 0;
+    const f = promise.rafRunner(() => {
+      count++;
+    });
+
+    f();
+    f();
+    assert.strictEqual(count, 0);
+
+    await new Promise((r) => requestAnimationFrame(r));
+    assert.strictEqual(count, 1);
+
+    promise.rafRunner(() => {
+      count++;
+    }, true);
+    assert.strictEqual(count, 1);
+
+    await new Promise((r) => requestAnimationFrame(r));
+    assert.strictEqual(count, 2);
+  } finally {
+    if (usePolyfill) {
+      // @ts-ignore
+      delete global['requestAnimationFrame'];
+    }
+  }
 });
