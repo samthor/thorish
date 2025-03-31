@@ -13,7 +13,6 @@ export * from './listener.ts';
 export * from './maps.js';
 export * from './matcher.js';
 export * from './memoize.js';
-export * from './notifier.js';
 export * from './object-utils.js';
 export * from './record.js';
 export * from './promise.js';
