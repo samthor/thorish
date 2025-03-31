@@ -9,7 +9,6 @@ import './intermediate.js';
 import './maps.js';
 import './matcher.js';
 import './memoize.js';
-import './notifier.js';
 import './object-utils.js';
 import './primitives.js';
 import './promise.js';
