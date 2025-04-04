@@ -19,6 +19,11 @@ test('stateMachine', () => {
   assert.strictEqual(x.consume('"'), HtmlState.WithinTag);
 });
 
+test('attr', () => {
+  const x = htmlStateMachine();
+  assert.strictEqual(x.consume('what <z = '), HtmlState.TagAttr);
+});
+
 test('preprocessCache', () => {
   const checker = (arr: TemplateStringsArray, ...rest: string[]) => {
     return preprocessHtmlTemplateTag(arr);

@@ -32,6 +32,11 @@ export enum HtmlState {
   WithinStyleTag = 11,
 
   /**
+   * Within a `<textarea>` tag. Important as it must be closed by `</textarea>`.
+   */
+  WithinTextAreaTag = 12,
+
+  /**
    * Within a tag started by `"`.
    */
   WithinTagAttrDoubleQuote = 17,
@@ -44,7 +49,7 @@ export enum HtmlState {
 
 const nextRe = /<(\!--|\w+)/;
 
-const withinTagNext = /(=?\'|=?\"|=|>|\/\>)/;
+const withinTagNext = /(=?\s*\'|=?\s*\"|=\s*|>|\/\>)/;
 
 const closedByRe = /^\s*>/;
 
@@ -65,6 +70,10 @@ export function indexOfCloserWithinTagLike(state: HtmlState, check: string) {
 
     case HtmlState.WithinStyleTag:
       find = '</style';
+      break;
+
+    case HtmlState.WithinTextAreaTag:
+      find = '</textarea';
       break;
 
     default:
@@ -113,6 +122,9 @@ export function escapeStringFor(state: HtmlState, s: string | number) {
       case HtmlState.WithinStyleTag:
         msg = '</style>';
         break;
+      case HtmlState.WithinTextAreaTag:
+        msg = '</textarea>';
+        break;
     }
     throw new Error(`can't inline text: dangerously contains closer "${msg}"`);
   }
@@ -121,6 +133,7 @@ export function escapeStringFor(state: HtmlState, s: string | number) {
     case HtmlState.WithinComment:
     case HtmlState.WithinScriptTag:
     case HtmlState.WithinStyleTag:
+    case HtmlState.WithinTextAreaTag:
       // safe because of indexOfCloserWithinTagLike above
       return s;
   }
@@ -176,39 +189,29 @@ export function htmlStateMachine() {
         if (!m) {
           return;
         }
-
-        switch (m[1]) {
-          case '/>':
-          case '>':
-            switch (upcomingWithinTag) {
-              case 'script':
-                state = HtmlState.WithinScriptTag;
-                break;
-              case 'style':
-                state = HtmlState.WithinStyleTag;
-                break;
-              default:
-                state = HtmlState.Normal;
-            }
-            upcomingWithinTag = '';
-            break;
-
-          case `='`:
-          case `'`:
-            state = HtmlState.WithinTagAttrSingleQuote;
-            break;
-
-          case `="`:
-          case `"`:
-            state = HtmlState.WithinTagAttrDoubleQuote;
-            break;
-
-          case '=':
-            state = HtmlState.TagAttr;
-            break;
-
-          default:
-            throw new Error(`unexpected next: ${m[1]}`);
+        const inner = m[1];
+        const last = inner[inner.length - 1];
+        if (last === '"') {
+          state = HtmlState.WithinTagAttrDoubleQuote;
+        } else if (last === "'") {
+          state = HtmlState.WithinTagAttrSingleQuote;
+        } else if (inner[0] === '=') {
+          state = HtmlState.TagAttr;
+        } else {
+          switch (upcomingWithinTag) {
+            case 'script':
+              state = HtmlState.WithinScriptTag;
+              break;
+            case 'style':
+              state = HtmlState.WithinStyleTag;
+              break;
+            case 'textarea':
+              state = HtmlState.WithinTextAreaTag;
+              break;
+            default:
+              state = HtmlState.Normal;
+          }
+          upcomingWithinTag = '';
         }
 
         return internalConsume(next.substring(m.index + m[1].length));
@@ -233,7 +236,8 @@ export function htmlStateMachine() {
 
       case HtmlState.WithinComment:
       case HtmlState.WithinScriptTag:
-      case HtmlState.WithinStyleTag: {
+      case HtmlState.WithinStyleTag:
+      case HtmlState.WithinTextAreaTag: {
         const index = indexOfCloserWithinTagLike(state, next);
         if (index === -1) {
           return; // no state change
