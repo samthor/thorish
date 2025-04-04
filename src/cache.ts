@@ -30,3 +30,18 @@ export class SimpleCache<K, V> {
     this.m.clear();
   }
 }
+
+/**
+ * Return a helper which runs the passed function at most once.
+ */
+export function once<T = void>(fn: () => T) {
+  let run = false;
+  let result: T;
+  return () => {
+    if (!run) {
+      run = true;
+      result = fn();
+    }
+    return result;
+  };
+}

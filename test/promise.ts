@@ -64,9 +64,12 @@ test('rafRunner', async () => {
     await new Promise((r) => requestAnimationFrame(r));
     assert.strictEqual(count, 1);
 
-    promise.rafRunner(() => {
-      count++;
-    }, true);
+    promise.rafRunner(
+      () => {
+        count++;
+      },
+      { immediate: true },
+    );
     assert.strictEqual(count, 1);
 
     await new Promise((r) => requestAnimationFrame(r));

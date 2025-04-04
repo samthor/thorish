@@ -111,20 +111,30 @@ export function buildCallTrain<R>(fn: () => Promise<R>): () => Promise<R> {
 /**
  * Builds a {@link requestAnimationFrame} runner, which runs the callback at most once per frame.
  *
- * If the second parameter is true, queues the callback under {@link requestAnimationFrame} immediately.
+ * Accepts options: `immediate` to queue immediately, and `signal` which is checked before the callback is finally run.
  */
-export function rafRunner(callback: () => void, immediate?: boolean) {
-  // TODO: not really a promise, should not be in this file
+export function rafRunner(
+  callback: () => void,
+  options?: { immediate?: boolean; signal?: AbortSignal },
+) {
+  const { immediate, signal } = options ?? {};
+
+  // TODO: not a promise, should not be in this file
   let active = false;
   const o = () => {
     if (!active) {
       active = true;
       requestAnimationFrame(() => {
         active = false;
-        callback();
+
+        if (!signal?.aborted) {
+          callback();
+        }
       });
     }
   };
+
   immediate && o();
+
   return o;
 }
