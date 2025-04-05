@@ -25,9 +25,8 @@ export function isArrayEqualIsh(val1: unknown, val2: unknown) {
   return false;
 }
 
-export function base64ToBytes(s: string): Uint8Array {
-  // TODO: not base64?
-  const sb = atob(s);
+export function base64UrlToBytes(s: string): Uint8Array {
+  const sb = atob(s.replaceAll('-', '+').replaceAll('_', '/'));
 
   const out = new Uint8Array(sb.length);
   for (let i = 0; i < out.length; ++i) {
@@ -35,6 +34,24 @@ export function base64ToBytes(s: string): Uint8Array {
   }
 
   return out;
+}
+
+export function base64UrlToString(s: string) {
+  return new TextDecoder('utf-8').decode(base64UrlToBytes(s));
+}
+
+export function toBase64Url(s: string | Uint8Array) {
+  if (typeof s === 'string') {
+    s = new TextEncoder().encode(s);
+  }
+
+  if ('toBase64' in s) {
+    // @ts-ignore
+    return s.toBase64({ alphabet: 'base64url', omitPadding: true });
+  }
+
+  const bs = String.fromCodePoint(...s);
+  return btoa(bs).replace(/=+$/, '').replaceAll('+', '-').replaceAll('/', '_');
 }
 
 export function concatBytes(chunks: Uint8Array[]) {
@@ -58,14 +75,14 @@ export function concatBytes(chunks: Uint8Array[]) {
   return out;
 }
 
-export const nextTick = /* @__PURE__ */ (() => {
-  const isIOS = /iphone|ipad|ipod|ios/.test(window.navigator.userAgent);
-  const noop = () => {};
+// export const nextTick = /* @__PURE__ */ (() => {
+//   const isIOS = /iphone|ipad|ipod|ios/.test(window.navigator.userAgent);
+//   const noop = () => {};
 
-  return (cb: () => {}) => {
-    resolvedPromise.then(cb);
-    if (isIOS) {
-      setTimeout(noop);
-    }
-  };
-})();
+//   return (cb: () => {}) => {
+//     resolvedPromise.then(cb);
+//     if (isIOS) {
+//       setTimeout(noop);
+//     }
+//   };
+// })();

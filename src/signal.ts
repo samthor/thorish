@@ -43,7 +43,7 @@ export function afterSignal(signal: AbortSignal, fn: () => any): () => boolean {
 
 /**
  * Returns a {@link Promise} for the abort of the passed {@link AbortSignal}. Resolves with void/
- * `undefined` when done.
+ * `undefined` when done, rather than the `reason` property.
  */
 export function promiseVoidForSignal(signal: AbortSignal): Promise<void> {
   if (signal.aborted) {
@@ -58,8 +58,8 @@ export function promiseVoidForSignal(signal: AbortSignal): Promise<void> {
  * Returns a {@link Promise} for the abort of the passed {@link AbortSignal}. This may be already
  * resolved/rejected if the signal is already aborted, rather than running in a microtask.
  *
- * By default, this rejects. Pass a second argument (even `null` or `undefined`) to resolve
- * 'safely'.
+ * By default, this rejects with the signal's `reason`. Pass a second argument (even `null` or
+ * `undefined`) to resolve with this value, instead (e.g., `Promise.reject(...)`).
  */
 export function promiseForSignal<T = never>(
   signal: AbortSignal,
@@ -67,14 +67,70 @@ export function promiseForSignal<T = never>(
 ): Promise<T> {
   if (resolveWith === undefined && arguments.length < 2) {
     // nb. we can't detect `undefined` otherwise, need to look at length
-    resolveWith = Promise.reject<T>(new Error('aborted'));
+    if (signal.aborted) {
+      return Promise.reject(signal.reason);
+    }
+    return new Promise((reject) => signal.addEventListener('abort', () => reject(signal.reason)));
   }
+
   if (signal.aborted) {
     return Promise.resolve(resolveWith!);
   }
   return new Promise((resolve) => {
     signal.addEventListener('abort', () => resolve(resolveWith!));
   });
+}
+
+/**
+ * Polyfilled version of link {@link AbortSignal.any}.
+ */
+const abortSignalAny = /* @__PURE__ */ (() =>
+  AbortSignal.any
+    ? AbortSignal.any
+    : (all: AbortSignal[]) => {
+        const previouslyAborted = all.find((x) => x.aborted);
+        if (previouslyAborted !== undefined) {
+          return previouslyAborted;
+        }
+
+        const c = new AbortController();
+        all.forEach((p) => p.addEventListener('abort', () => c.abort(p.reason)));
+        return c.signal;
+      })();
+
+const buildTimeout = () =>
+  new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+
+/**
+ * Wraps {@link AbortSignal.timeout} to deal with Chrome's "TimeoutError" issue (before Chrome 123, it reported "AbortError").
+ */
+export function abortSignalTimeout(timeout: number) {
+  const c = new AbortController();
+
+  const s = AbortSignal.timeout(timeout);
+  s.addEventListener('abort', () => {
+    if (s.reason instanceof DOMException && s.reason.name === 'TimeoutError') {
+      c.abort(s.reason);
+    } else {
+      // Chrome briefly emitted AbortError [103,123]
+      c.abort(buildTimeout());
+    }
+  });
+
+  return c.signal;
+}
+
+/**
+ * Returns a new {@link AbortSignal} which aborts on the next tick.
+ *
+ * Aborts with "TimeoutError", just like {@link AbortSignal.timeout}.
+ */
+export function tickAbortSignal() {
+  const c = new AbortController();
+
+  Promise.resolve().then(() => c.abort(buildTimeout()));
+
+  return c.signal;
 }
 
 /**
@@ -90,19 +146,17 @@ export function promiseForSignal<T = never>(
  */
 export function derivedSignal(...raw: (AbortSignal | undefined)[]): {
   signal: AbortSignal;
-  abort: () => void;
+  abort: (reason?: any) => void;
 } {
   const previous = raw.filter(Boolean) as AbortSignal[];
 
-  const previouslyAborted = previous.find((x) => x.aborted);
-  if (previouslyAborted !== undefined) {
-    return { signal: previouslyAborted, abort: () => {} };
-  }
-
   const c = new AbortController();
-  const abort = () => c.abort();
-  previous.forEach((p) => p.addEventListener('abort', abort));
-  return { signal: c.signal, abort };
+  previous.push(c.signal);
+
+  const signal = abortSignalAny(previous);
+  const abort = (reason?: any) => c.abort(reason);
+
+  return { signal, abort };
 }
 
 /**
@@ -118,3 +172,10 @@ export const abortedSignal = /* @__PURE__ */ (() => {
  * A never aborted signal.
  */
 export const neverAbortedSignal = /* @__PURE__ */ (() => new AbortController().signal)();
+
+/**
+ * A TODO signal, used as a placeholder until you can find a better one.
+ *
+ * This is the same as {@link neverAbortedSignal}.
+ */
+export const todoSignal = neverAbortedSignal;

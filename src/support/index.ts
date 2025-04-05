@@ -1,6 +1,6 @@
 export * from '#dom';
 
-export { concatBytes, base64ToBytes } from '#support';
+export { concatBytes, base64UrlToBytes, toBase64Url, base64UrlToString } from '#support';
 
 import * as fake from '#support';
 

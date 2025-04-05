@@ -1,6 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { afterSignal, derivedSignal, promiseForSignal } from '../src/signal.js';
+import { abortSignalTimeout, afterSignal, derivedSignal, promiseForSignal } from '../src/signal.js';
+import { timeout } from '../src/promise.ts';
 
 test('promiseFor', async () => {
   const c = new AbortController();
@@ -55,4 +56,19 @@ test('afterSignal', async () => {
   assert.strictEqual(stop(), false);
   await Promise.resolve();
   assert.strictEqual(invoked, 0);
+});
+
+test('timeout', async () => {
+  const s = abortSignalTimeout(0);
+  assert.strictEqual(s.aborted, false);
+
+  // nb. zero doesn't resolve after a microtask; it resolves after timeout
+  await timeout(0);
+
+  assert.strictEqual(s.aborted, true);
+
+  const { reason } = s;
+  if (!(reason instanceof DOMException) || reason.name !== 'TimeoutError') {
+    assert.fail('Invalid exception type: ' + reason);
+  }
 });

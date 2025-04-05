@@ -108,30 +108,61 @@ export function buildCallTrain<R>(fn: () => Promise<R>): () => Promise<R> {
   };
 }
 
+export type RunnerOptions = {
+  immediate?: boolean;
+
+  /**
+   * Prevent the final callback from running if this {@link AbortSignal} is aborted.
+   */
+  signal?: AbortSignal;
+};
+
 /**
  * Builds a {@link requestAnimationFrame} runner, which runs the callback at most once per frame.
  *
  * Accepts options: `immediate` to queue immediately, and `signal` which is checked before the callback is finally run.
+ * If the passed {@link AbortSignal} is aborted, the returned `Promise` is rejected with its `reason`, but is internally read to prevent unhandled exceptions.
  */
-export function rafRunner(
-  callback: () => void,
-  options?: { immediate?: boolean; signal?: AbortSignal },
-) {
+export function rafRunner<T = void>(callback: () => T, options?: RunnerOptions): () => Promise<T> {
+  return internalBuildRunner(requestAnimationFrame, callback, options);
+}
+
+/**
+ * Builds a next-tick runner, which runs the callback at most once per tick.
+ *
+ * Accepts options: `immediate` to queue immediately, and `signal` which is checked before the callback is finally run.
+ * If the passed {@link AbortSignal} is aborted, the returned `Promise` is rejected with its `reason`, but is internally read to prevent unhandled exceptions.
+ */
+export function tickRunner<T = void>(callback: () => T, options?: RunnerOptions): () => Promise<T> {
+  return internalBuildRunner((m) => Promise.resolve().then(m), callback, options);
+}
+
+function internalBuildRunner<T = void>(
+  runner: (cb: () => void) => any,
+  callback: () => T,
+  options?: RunnerOptions,
+): () => Promise<T> {
   const { immediate, signal } = options ?? {};
 
-  // TODO: not a promise, should not be in this file
-  let active = false;
-  const o = () => {
-    if (!active) {
-      active = true;
-      requestAnimationFrame(() => {
-        active = false;
+  let activePromise: Promise<T> | undefined;
 
-        if (!signal?.aborted) {
-          callback();
-        }
+  const o = () => {
+    if (activePromise === undefined) {
+      activePromise = new Promise((resolve, reject) => {
+        runner(() => {
+          activePromise = undefined;
+          if (signal?.aborted) {
+            reject(signal.reason);
+          } else {
+            resolve(callback());
+          }
+        });
       });
+      // prevent nodeJS or friends from exploding
+      activePromise.catch(() => {});
     }
+
+    return activePromise;
   };
 
   immediate && o();
