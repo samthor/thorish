@@ -1,30 +1,31 @@
-import { resolvedPromise } from '../promise.ts';
-
 /**
- * This is good enough for the matcher "any" stuff.
+ * Checks, at minimum, whether the two passed values are arrays with the same length and the same soft-references within the array.
+ *
+ * In Node, this will just use deep equality.
  */
 export function isArrayEqualIsh(val1: unknown, val2: unknown) {
   if (val1 === val2) {
     return true;
   }
 
-  if (Array.isArray(val1) && Array.isArray(val2)) {
-    if (val1.length !== val2.length) {
-      return false;
-    }
-
-    for (let i = 0; i < val1.length; ++i) {
-      if (val1[i] !== val2[i]) {
-        return false;
-      }
-    }
-
-    return true;
+  if (!Array.isArray(val1) || !Array.isArray(val2) || val1.length !== val2.length) {
+    return false;
   }
 
-  return false;
+  for (let i = 0; i < val1.length; ++i) {
+    if (val1[i] !== val2[i]) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
+/**
+ * Convert a base64url-encoded string into {@link Uint8Array}.
+ *
+ * Slow in browser.
+ */
 export function base64UrlToBytes(s: string): Uint8Array {
   const sb = atob(s.replaceAll('-', '+').replaceAll('_', '/'));
 
@@ -36,10 +37,20 @@ export function base64UrlToBytes(s: string): Uint8Array {
   return out;
 }
 
+/**
+ * Convert a base64url-encoded string into a string via UTF-8.
+ *
+ * Slow in browser.
+ */
 export function base64UrlToString(s: string) {
   return new TextDecoder('utf-8').decode(base64UrlToBytes(s));
 }
 
+/**
+ * Converts a {@link Uint8Array} or string (as UTF-8) to a base64url-encoded string without padding.
+ *
+ * Slow in browser.
+ */
 export function toBase64Url(s: string | Uint8Array) {
   if (typeof s === 'string') {
     s = new TextEncoder().encode(s);
@@ -50,10 +61,13 @@ export function toBase64Url(s: string | Uint8Array) {
     return s.toBase64({ alphabet: 'base64url', omitPadding: true });
   }
 
-  const bs = String.fromCodePoint(...s);
+  const bs = String.fromCodePoint(...s); // btoa works on ascii strings
   return btoa(bs).replace(/=+$/, '').replaceAll('+', '-').replaceAll('/', '_');
 }
 
+/**
+ * Concat the given {@link Uint8Array} together. If only one is given, returns that in-place.
+ */
 export function concatBytes(chunks: Uint8Array[]) {
   chunks = chunks.filter((chunk) => chunk.length !== 0);
 
