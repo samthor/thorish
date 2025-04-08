@@ -1,54 +1,70 @@
 import { timeout } from './promise.ts';
 import { afterSignal, promiseVoidForSignal } from './signal.ts';
 
+export type WebSocketSupportedPayload = string | ArrayBufferLike | Blob | ArrayBufferView;
+export type PrepMessage<T> = T | Promise<T> | (() => T | Promise<T>);
+
 /**
  * Helper which returns a method that sends data over the given {@link WebSocket}, including queuing until it is connected.
  * This method returns `true` if the data was sent, or ever has a chance of being sent (i.e., not closed/closing).
  *
+ * The passed message can be a `Promise`, or a function which returns a `Promise`.
+ *
  * The data is sent without being transformed (i.e., no {@link JSON.stringify}), but you can pass this as the second arg if it's important to you.
  */
-export function socketQueueSend(
-  p: WebSocket | Promise<WebSocket>,
-  transformMessage?: (m: any) => any,
-): (message: any) => boolean {
-  if (p instanceof WebSocket) {
-    p = Promise.resolve(p);
-  }
+export function socketQueueSend<T = WebSocketSupportedPayload>(
+  socket: WebSocket | Promise<WebSocket>,
+  transformMessage?: (m: T) => WebSocketSupportedPayload | undefined,
+): (message: PrepMessage<T>) => boolean {
+  let p = Promise.resolve(socket);
 
-  transformMessage ??= (x) => x;
+  transformMessage ??= (m: T): WebSocketSupportedPayload | undefined =>
+    m as WebSocketSupportedPayload | undefined;
 
   let resolvedSocket: WebSocket | undefined;
-  let queue: any[] | undefined = [];
 
-  p.then((s) => {
-    resolvedSocket = s;
-
-    const clearQueue = () => {
-      if (s.readyState === s.OPEN) {
-        // queue only has already-transformed messages
-        queue?.forEach((message) => s.send(message));
-      }
-      queue = undefined;
-    };
-
-    if (s.readyState !== s.CONNECTING) {
-      // either connected or done; either way, flush queue now
-      return clearQueue();
+  const attemptSend = async (raw: PrepMessage<T>) => {
+    if (resolvedSocket === undefined || resolvedSocket.readyState !== resolvedSocket.OPEN) {
+      return;
     }
-    s.addEventListener('open', clearQueue, { once: true });
-    s.addEventListener('close', clearQueue, { once: true });
-    s.addEventListener('error', clearQueue, { once: true });
+
+    let untransformed: T;
+    if (typeof raw === 'function') {
+      const fn = raw as () => T | Promise<T>;
+      untransformed = await fn();
+    } else {
+      untransformed = await raw;
+    }
+    const transformed = transformMessage(untransformed);
+    if (transformed != null) {
+      resolvedSocket?.send(transformed);
+    }
+  };
+
+  p = p.then(async (s) => {
+    resolvedSocket = s;
+    switch (s.readyState) {
+      case s.CLOSED:
+      case s.CLOSING:
+      case s.OPEN:
+        return s;
+    }
+    await new Promise<unknown>((resolve) => {
+      s.addEventListener('open', resolve, { once: true });
+      s.addEventListener('close', resolve, { once: true });
+    });
+    return s;
   });
 
-  return (message: any) => {
-    if (queue !== undefined) {
-      queue.push(transformMessage(message));
-    } else if (resolvedSocket && resolvedSocket?.readyState === resolvedSocket.OPEN) {
-      resolvedSocket.send(transformMessage(message));
-    } else {
-      return false;
+  return (message: PrepMessage<T>) => {
+    const maySend =
+      resolvedSocket === undefined ||
+      resolvedSocket.readyState === resolvedSocket.CONNECTING ||
+      resolvedSocket.readyState === resolvedSocket.OPEN;
+    if (maySend) {
+      p = p.finally(() => attemptSend(message));
     }
-    return true;
+    return maySend;
   };
 }
 
