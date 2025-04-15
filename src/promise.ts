@@ -128,6 +128,26 @@ export function rafRunner<T = void>(callback: () => T, options?: RunnerOptions):
 }
 
 /**
+ * Builds a runner which fires the faster of {@link setTimeout} and {@link requestAnimationFrame}, which runs the callback at most once per frame.
+ *
+ * Accepts options: `immediate` to queue immediately, and `signal` which is checked before the callback is finally run.
+ * If the passed {@link AbortSignal} is aborted, the returned `Promise` is rejected with its `reason`, but is internally read to prevent unhandled exceptions.
+ */
+export function fastFrameRunner<T = void>(
+  callback: () => T,
+  options?: RunnerOptions,
+): () => Promise<T> {
+  return internalBuildRunner(
+    (cb) => {
+      // race both options
+      requestAnimationFrame(cb);
+      setTimeout(cb, 0);
+    },
+    callback,
+    options,
+  );
+}
+/**
  * Builds a next-tick runner, which runs the callback at most once per tick.
  *
  * Accepts options: `immediate` to queue immediately, and `signal` which is checked before the callback is finally run.
@@ -148,18 +168,25 @@ function internalBuildRunner<T = void>(
 
   const o = () => {
     if (activePromise === undefined) {
-      activePromise = new Promise((resolve, reject) => {
-        runner(() => {
-          activePromise = undefined;
-          if (signal?.aborted) {
-            reject(signal.reason);
-          } else {
-            resolve(callback());
-          }
-        });
+      const pr = promiseWithResolvers<T>();
+
+      runner(() => {
+        if (activePromise !== pr.promise) {
+          return; // allow multiple runners
+        }
+        activePromise = undefined;
+
+        if (signal?.aborted) {
+          pr.reject(signal.reason);
+        } else {
+          pr.resolve(callback());
+        }
       });
+
       // prevent nodeJS or friends from exploding
-      activePromise.catch(() => {});
+      pr.promise.catch(() => {});
+
+      activePromise = pr.promise;
     }
 
     return activePromise;

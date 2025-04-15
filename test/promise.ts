@@ -74,6 +74,18 @@ test('rafRunner', async () => {
 
     await new Promise((r) => requestAnimationFrame(r));
     assert.strictEqual(count, 2);
+
+    // check fastFrameRunner only runs once
+    count = 0;
+    const r = promise.fastFrameRunner(() => {
+      count++;
+    });
+    r();
+    await Promise.all([
+      new Promise((r) => requestAnimationFrame(r)),
+      new Promise((r) => setTimeout(r, 0)),
+    ]);
+    assert.strictEqual(count, 1);
   } finally {
     if (usePolyfill) {
       // @ts-ignore
