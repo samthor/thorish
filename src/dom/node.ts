@@ -16,6 +16,12 @@ export function escapeHtmlEntites(str: string): string {
 
 export abstract class SignalHTMLElement {
   constructor() {
-    throw new Error(`SignalHTMLElement not in node`);
+    throw new Error(`not in node`);
+  }
+}
+
+export class SizingElement {
+  constructor() {
+    throw new Error(`not in node`);
   }
 }
