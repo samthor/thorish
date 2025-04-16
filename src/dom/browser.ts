@@ -166,14 +166,10 @@ export abstract class SignalHTMLElement extends HTMLElement {
 }
 
 /**
- * Non-abstract class which sizes its parent container as best it can.
+ * Non-abstract class which sizes its 'position' as best it can.
  *
- * This has two main requirements:
- *  - the parent MUST NOT be `display` of "inline", "contents" or similar
- *  - the parent MUST NOT be `height: auto`
- *
- * In practice you should be able to influence the default behavior of the parent.
- * Set it to `display: block` and `height: 0` as defaults and let the user overwrite them.
+ * Slotted children are put into a flexbox which sets `flex-grow` on them.
+ * That is, if you add multiple children, they'll be stacked in a column.
  *
  * Must be registered before use, not defined "for free" by this library.
  */
@@ -194,46 +190,36 @@ export class SizingElement extends HTMLElement {
       `,
       css`
         :host {
-          flex-grow: 1; /* in case host is "display: flex" for some reason */
+          width: inherit;
+          height: inherit;
+          min-width: inherit;
+          min-height: inherit;
+          max-width: inherit;
+          max-height: inherit;
 
           position: relative;
-          width: 100%;
-          height: 100%;
-          /* do NOT set Firefox; it is happy with height: 100% */
-          height: -webkit-fill-available;
+          background: red;
           display: flex;
-        }
 
-        main {
-          width: 100%;
-          height: 100%;
-          background: blue;
-          display: block;
+          padding: inherit;
+          border: inherit;
+          margin: inherit;
         }
 
         #inner {
           margin: var(--sizing-negative-margin);
-          position: relative;
-
-          width: 100%;
-          width: -webkit-fill-available;
-          width: -moz-available;
-          width: stretch;
-
           flex-grow: 1;
-          /*          min-height: calc(100% + var(--sizing-extra-height)); */
           display: flex;
           flex-flow: column;
-
-          min-height: var(--sizing-outer-height);
         }
+        ::slotted(*) {
+          flex-grow: 1;
+        }
+
         #abs {
           inset: 0;
           position: absolute;
           pointer-events: none;
-        }
-        ::slotted(*) {
-          flex-grow: 1;
         }
       `,
     );

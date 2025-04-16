@@ -11,12 +11,19 @@ export class DemoElement extends HTMLElement {
             Big!
             <button>Make bigger</button>
           </div>
+          <div id="big"></div>
+
           <div id="align" slot="abs">To bottom</div>
         </sizing-test>
       `,
       css`
+        :host {
+          display: contents !important;
+        }
+
         #big {
           background: #00f4;
+          border: 4px solid blue;
         }
         #align {
           position: absolute;
@@ -44,4 +51,5 @@ customElements.define('sizing-test', SizingElement);
 customElements.define('demo-test', DemoElement);
 
 const x = document.createElement('demo-test');
+x.style.display = 'block !important';
 document.body.append(x, 'After the demo');
