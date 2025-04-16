@@ -7,13 +7,15 @@ export class DemoElement extends HTMLElement {
     const s = buildShadow(
       html`
         <sizing-test>
+          <div id="big"></div>
           <div id="big">
             Big!
             <button>Make bigger</button>
           </div>
-          <div id="big"></div>
 
-          <div id="align" slot="abs">To bottom</div>
+          <div id="pad"></div>
+
+          <div id="align">To bottom</div>
         </sizing-test>
       `,
       css`
@@ -22,7 +24,7 @@ export class DemoElement extends HTMLElement {
         }
 
         #big {
-          background: #00f4;
+          background: #00f1;
           border: 4px solid blue;
         }
         #align {
@@ -30,6 +32,14 @@ export class DemoElement extends HTMLElement {
           bottom: 0;
           right: 0;
           background: green;
+        }
+
+        #pad {
+          width: var(--sizing-inner-width);
+          height: var(--sizing-inner-height);
+          background: pink;
+          opacity: 0.5;
+          pointer-events: none;
         }
       `,
     );

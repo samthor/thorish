@@ -167,6 +167,7 @@ export abstract class SignalHTMLElement extends HTMLElement {
 
 /**
  * Non-abstract class which sizes its 'position' as best it can.
+ * It is best placed inside something _else_ with `display: contents`, as we only inherit "supported" values.
  *
  * Slotted children are put into a flexbox which sets `flex-grow` on them.
  * That is, if you add multiple children, they'll be stacked in a column.
@@ -175,121 +176,68 @@ export abstract class SignalHTMLElement extends HTMLElement {
  */
 export class SizingElement extends HTMLElement {
   private ro: ResizeObserver;
-  private parent?: Element;
-  private holder: HTMLElement;
 
   constructor() {
     super();
 
     const s = buildShadow(
-      html`
-        <div id="inner">
-          <div id="abs"><slot name="abs"></slot></div>
-          <slot></slot>
-        </div>
-      `,
+      html`<div id="inner"><slot></slot></div>`,
       css`
         :host {
-          width: inherit;
-          height: inherit;
-          min-width: inherit;
-          min-height: inherit;
-          max-width: inherit;
-          max-height: inherit;
-
-          position: relative;
-          background: red;
+          all: inherit;
           display: flex;
-
-          padding: inherit;
-          border: inherit;
-          margin: inherit;
         }
 
         #inner {
           margin: var(--sizing-negative-margin);
           flex-grow: 1;
-          display: flex;
-          flex-flow: column;
-        }
-        ::slotted(*) {
-          flex-grow: 1;
+          position: relative;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: minmax(0, 1fr);
         }
 
-        #abs {
-          inset: 0;
-          position: absolute;
-          pointer-events: none;
+        ::slotted(*) {
+          grid-column: 1 / -1 !important;
+          grid-row: 1 / -1 !important;
+          max-width: 100% !important;
+          max-height: 100% !important;
+          box-sizing: border-box !important;
         }
       `,
     );
     const root = s(this);
-    const holder = root.firstElementChild as HTMLElement;
-    this.holder = holder;
+    const inner = root.firstElementChild as HTMLElement;
 
-    const safeApply = (prop: string, value: string) => {
-      const prev = holder.style.getPropertyValue(prop);
-      if (prev !== value) {
-        holder.style.setProperty(prop, value);
-      }
+    const prop = (prop: string, value: string) => {
+      inner.style.setProperty(prop, value);
     };
 
-    // This all exists so we can determine how much padding has been set on the <gumnut-text>, and
-    // then 'expand' our interior rendering to match that edge, so that non-wrapped inputs still go
-    // to the edge (but they themselves get _matching_ padding).
+    // we measure our own padding so we can 'expand' to match that edge and have contained elements
+    // decide whether they care / want to incorporate the padding
     const refreshState = () => {
-      if (!this.parent) {
-        return;
-      }
-
-      const cs = window.getComputedStyle(this.parent);
+      const cs = window.getComputedStyle(this);
       const { paddingTop, paddingRight, paddingBottom, paddingLeft, padding } = cs;
+      const negativePadding = `-${paddingTop} -${paddingRight} -${paddingBottom} -${paddingLeft}`;
 
-      // console.debug('resize fired', {
-      //   padding,
-      //   ow: { w: this.offsetWidth, h: this.offsetHeight },
-      //   pow: { w: this.parent.offsetWidth, h: this.parent.offsetHeight },
-      // });
+      prop('--sizing-extra-width', `calc(${paddingLeft} + ${paddingRight})`);
+      prop('--sizing-extra-height', `calc(${paddingTop} + ${paddingBottom})`);
+      prop('--sizing-padding', padding);
+      prop('--sizing-inner-width', `calc(100% - (${paddingLeft} + ${paddingRight}))`);
+      prop('--sizing-inner-height', `calc(100% - (${paddingTop} + ${paddingBottom}))`);
 
-      safeApply('--sizing-extra-width', `calc(${paddingLeft} + ${paddingRight})`);
-      safeApply('--sizing-extra-height', `calc(${paddingTop} + ${paddingBottom})`);
-      safeApply('--sizing-padding', padding);
-      safeApply(
-        '--sizing-negative-margin',
-        `-${paddingTop} -${paddingRight} -${paddingBottom} -${paddingLeft}`,
-      );
-
-      // TODO: these are 'dangerously' integer values
-      holder.style.setProperty('--sizing-inner-width', `${this.offsetWidth}px`);
-      holder.style.setProperty('--sizing-inner-height', `${this.offsetHeight}px`);
-
-      if (this.parent instanceof HTMLElement) {
-        holder.style.setProperty('--sizing-outer-width', `${this.parent.offsetWidth}px`);
-        holder.style.setProperty('--sizing-outer-height', `${this.parent.offsetHeight}px`);
-      }
+      // TODO: Safari complains when padding is changed and we set this line
+      // How often will people change padding in regular operation?
+      prop('--sizing-negative-margin', negativePadding);
     };
     this.ro = new ResizeObserver(tickRunner(refreshState));
   }
 
   connectedCallback() {
-    if (this.parentElement instanceof Element) {
-      this.parent = this.parentElement;
-    } else {
-      const root = this.getRootNode();
-      if (root instanceof ShadowRoot) {
-        this.parent = root.host;
-      }
-    }
-
-    if (this.parent) {
-      this.ro.observe(this);
-      this.ro.observe(this.parent, { box: 'border-box' });
-      this.ro.observe(this.holder);
-    }
+    this.ro.observe(this); // default 'content-box' which includes padding/etc
   }
 
   disconnectedCallback() {
-    this.parent = undefined;
     this.ro.disconnect();
   }
 }
