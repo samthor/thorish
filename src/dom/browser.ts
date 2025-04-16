@@ -231,8 +231,8 @@ export class SizingElement extends HTMLElement {
     };
     const ro = new ResizeObserver(tickRunner(refreshState));
 
-    // explicitly track both
-    ro.observe(this, { box: 'border-box' });
+    // explicitly track both (order might be important)
     ro.observe(this, { box: 'content-box' });
+    ro.observe(this, { box: 'border-box' });
   }
 }
