@@ -185,7 +185,7 @@ export class SizingElement extends HTMLElement {
       css`
         :host {
           all: inherit;
-          display: flex;
+          display: inline-flex;
         }
 
         #inner {
