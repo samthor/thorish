@@ -175,8 +175,6 @@ export abstract class SignalHTMLElement extends HTMLElement {
  * Must be registered before use, not defined "for free" by this library.
  */
 export class SizingElement extends HTMLElement {
-  private ro: ResizeObserver;
-
   constructor() {
     super();
 
@@ -186,6 +184,9 @@ export class SizingElement extends HTMLElement {
         :host {
           all: inherit;
           display: inline-flex;
+        }
+        :host([block]) {
+          display: flex;
         }
 
         #inner {
@@ -209,9 +210,7 @@ export class SizingElement extends HTMLElement {
     const root = s(this);
     const inner = root.firstElementChild as HTMLElement;
 
-    const prop = (prop: string, value: string) => {
-      inner.style.setProperty(prop, value);
-    };
+    const prop = (prop: string, value: string) => inner.style.setProperty(prop, value);
 
     // we measure our own padding so we can 'expand' to match that edge and have contained elements
     // decide whether they care / want to incorporate the padding
@@ -230,14 +229,10 @@ export class SizingElement extends HTMLElement {
       // How often will people change padding in regular operation?
       prop('--sizing-negative-margin', negativePadding);
     };
-    this.ro = new ResizeObserver(tickRunner(refreshState));
-  }
+    const ro = new ResizeObserver(tickRunner(refreshState));
 
-  connectedCallback() {
-    this.ro.observe(this); // default 'content-box' which includes padding/etc
-  }
-
-  disconnectedCallback() {
-    this.ro.disconnect();
+    // explicitly track both
+    ro.observe(this, { box: 'border-box' });
+    ro.observe(this, { box: 'content-box' });
   }
 }
