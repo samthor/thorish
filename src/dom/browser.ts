@@ -193,12 +193,24 @@ export class SizingElement extends HTMLElement {
           margin: var(--sizing-negative-margin);
           flex-grow: 1;
           position: relative;
+        }
+
+        #inner {
+          display: flex;
+          flex-flow: row;
+        }
+
+        ::slotted(*) {
+          flex-grow: 1 !important;
+        }
+
+        :host([grid]) #inner {
           display: grid;
           grid-template-columns: minmax(0, 1fr);
           grid-template-rows: minmax(0, 1fr);
         }
 
-        ::slotted(*) {
+        :host([grid]) ::slotted(*) {
           grid-column: 1 / -1 !important;
           grid-row: 1 / -1 !important;
           max-width: 100% !important;
@@ -222,8 +234,8 @@ export class SizingElement extends HTMLElement {
       prop('--sizing-extra-width', `calc(${paddingLeft} + ${paddingRight})`);
       prop('--sizing-extra-height', `calc(${paddingTop} + ${paddingBottom})`);
       prop('--sizing-padding', padding);
-      prop('--sizing-inner-width', `calc(100% - (${paddingLeft} + ${paddingRight}))`);
-      prop('--sizing-inner-height', `calc(100% - (${paddingTop} + ${paddingBottom}))`);
+      prop('--sizing-inner-width', cs.getPropertyValue('width'));
+      prop('--sizing-inner-height', cs.getPropertyValue('height'));
 
       // TODO: Safari complains when padding is changed and we set this line
       // How often will people change padding in regular operation?
@@ -231,8 +243,9 @@ export class SizingElement extends HTMLElement {
     };
     const ro = new ResizeObserver(tickRunner(refreshState));
 
-    // explicitly track both (order might be important)
+    // we need all three (long story)
     ro.observe(this, { box: 'content-box' });
     ro.observe(this, { box: 'border-box' });
+    ro.observe(inner);
   }
 }
