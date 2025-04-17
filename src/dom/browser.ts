@@ -193,6 +193,7 @@ export class SizingElement extends HTMLElement {
           margin: var(--sizing-negative-margin);
           flex-grow: 1;
           position: relative;
+          width: 0;
         }
 
         #inner {
@@ -231,11 +232,28 @@ export class SizingElement extends HTMLElement {
       const { paddingTop, paddingRight, paddingBottom, paddingLeft, padding } = cs;
       const negativePadding = `-${paddingTop} -${paddingRight} -${paddingBottom} -${paddingLeft}`;
 
+      const width = cs.getPropertyValue('width');
+      const height = cs.getPropertyValue('height');
+
       prop('--sizing-extra-width', `calc(${paddingLeft} + ${paddingRight})`);
       prop('--sizing-extra-height', `calc(${paddingTop} + ${paddingBottom})`);
       prop('--sizing-padding', padding);
-      prop('--sizing-inner-width', cs.getPropertyValue('width'));
-      prop('--sizing-inner-height', cs.getPropertyValue('height'));
+
+      if (cs.boxSizing === 'border-box') {
+        // the calculated width includes all this
+        const { borderLeftWidth, borderRightWidth, borderTopWidth, borderBottomWidth } = cs;
+        prop(
+          '--sizing-inner-width',
+          `calc(${width} - (${paddingLeft} + ${paddingRight} + ${borderLeftWidth} + ${borderRightWidth}))`,
+        );
+        prop(
+          '--sizing-inner-height',
+          `calc(${height} - (${paddingTop} + ${paddingBottom} + ${borderTopWidth} + ${borderBottomWidth}))`,
+        );
+      } else {
+        prop('--sizing-inner-width', width);
+        prop('--sizing-inner-height', height);
+      }
 
       // TODO: Safari complains when padding is changed and we set this line
       // How often will people change padding in regular operation?
