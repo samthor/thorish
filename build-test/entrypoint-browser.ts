@@ -1,3 +1,3 @@
-import { clamp } from '../dist/browser.esm.js';
+import { clamp } from '../dist/browser/entrypoint.js';
 
 console.info(clamp(1, 2, 5));

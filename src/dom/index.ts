@@ -1,5 +1,5 @@
 import { escapeStringFor, HtmlState, preprocessHtmlTemplateTag } from '../html-state.ts';
-import { rafRunner, tickRunner } from '../promise.ts';
+import { tickRunner } from '../promise.ts';
 import { abortedSignal } from '../signal.ts';
 
 /**
@@ -105,14 +105,6 @@ export function buildShadowOptions(
 }
 
 const temporaryHtmlEscaper: Element = /* @__PURE__ */ document.createElement('span');
-
-/**
- * Escapes basic HTML entities. (Does not escape `"` or `'`).
- */
-export function escapeHtmlEntites(s: string): string {
-  temporaryHtmlEscaper.textContent = s;
-  return temporaryHtmlEscaper.innerHTML;
-}
 
 /**
  * Simple HTML superclass which provides an abstract {@link SignalHTMLElement#refresh} method which is called when the element is mounted.

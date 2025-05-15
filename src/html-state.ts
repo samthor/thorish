@@ -1,4 +1,4 @@
-import { escapeHtmlEntites } from '#dom';
+import { escapeHtmlEntites } from './support/index.ts';
 
 export enum HtmlState {
   /**

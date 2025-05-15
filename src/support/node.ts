@@ -25,3 +25,7 @@ export function concatBytes(chunks: Uint8Array[]): Uint8Array {
 }
 
 export const nextTick = /* @__PURE__ */ (() => process.nextTick as (callback: () => {}) => void)();
+
+export function escapeHtmlEntites(str: string): string {
+  return str.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}

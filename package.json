@@ -1,5 +1,5 @@
 {
-  "version": "1.1.49",
+  "version": "1.1.50",
   "devDependencies": {
     "@types/node": "^22.13.10",
     "@types/ws": "^8.5.13",
@@ -12,7 +12,7 @@
   "scripts": {
     "test": "tsx test/",
     "build:dist-node": "esbuild entrypoint.ts --format=esm --platform=node --outfile=dist/node.esm.js --bundle --sourcemap",
-    "build:dist-browser": "esbuild entrypoint.ts --format=esm --platform=browser --outfile=dist/browser.esm.js --bundle --sourcemap",
+    "build:dist-browser": "esbuild entrypoint.ts src/dom/index.ts --splitting --format=esm --platform=browser --outdir=dist/browser --bundle --sourcemap",
     "build:types": "tsc -p tsconfig.types.json",
     "build:test": "./build-test.sh",
     "build": "rm -rf dist; pnpm run build:dist-node && pnpm run build:dist-browser && pnpm run build:types && pnpm run build:test",
@@ -25,19 +25,19 @@
     ".": {
       "import": {
         "node": "./dist/node.esm.js",
-        "browser": "./dist/browser.esm.js"
+        "browser": "./dist/browser/entrypoint.js"
       },
       "types": "./dist/types/index.d.ts"
+    },
+    "./dom": {
+      "browser": "./dist/browser/src/dom/index.js",
+      "types": "./dist/types/src/dom/index.d.ts"
     }
   },
   "imports": {
     "#support": {
       "node": "./src/support/node.ts",
       "browser": "./src/support/browser.ts"
-    },
-    "#dom": {
-      "node": "./src/dom/node.ts",
-      "browser": "./src/dom/browser.ts"
     }
   },
   "name": "thorish",
