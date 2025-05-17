@@ -20,7 +20,7 @@ export type NamedListeners<T extends Record<string, any>> = {
   /**
    * Runs a handler when any listeners are defined for the given name.
    */
-  any<K extends keyof T>(name: K, handler: (signal: AbortSignal) => void, signal: AbortSignal);
+  any<K extends keyof T>(name: K, handler: (signal: AbortSignal) => void, signal?: AbortSignal);
 
   /**
    * Converts this {@link NamedListeners} to an {@link EventTarget}.
@@ -42,21 +42,20 @@ export type SoloListener<V> = {
   any(handler: (signal: AbortSignal) => void, signal: AbortSignal);
 };
 
+type InternalListener = {
+  listeners: Set<(data: any) => void>;
+  any: Set<(signal: AbortSignal) => void>;
+  activeSignal: AbortSignal;
+  abort: () => void;
+};
+
 /**
  * Creates a typed, simple named listeners helper.
  *
  * This is a simpler version of something with {@link EventTarget}-like semantics.
  */
 export function namedListeners<T extends Record<string, any>>(): NamedListeners<T> {
-  const listeners = new Map<
-    keyof T,
-    {
-      listeners: Set<(data: any) => void>;
-      any: Set<(signal: AbortSignal) => void>;
-      activeSignal: AbortSignal;
-      abort: () => void;
-    }
-  >();
+  const listeners = new Map<keyof T, InternalListener>();
 
   const ensureListener = <K extends keyof T>(type: K) => {
     let s = listeners.get(type);
@@ -100,7 +99,7 @@ export function namedListeners<T extends Record<string, any>>(): NamedListeners<
     },
 
     any(name, callback, signal) {
-      if (signal.aborted) {
+      if (signal?.aborted) {
         return;
       }
 
@@ -112,7 +111,7 @@ export function namedListeners<T extends Record<string, any>>(): NamedListeners<
       }
       state.any.add(callback);
 
-      signal.addEventListener('abort', () => state.any.delete(callback));
+      signal?.addEventListener('abort', () => state.any.delete(callback));
 
       if (state.listeners.size) {
         // trigger immediately if active

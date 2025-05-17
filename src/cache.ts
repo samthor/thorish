@@ -29,6 +29,22 @@ export class SimpleCache<K, V> {
   clear() {
     this.m.clear();
   }
+
+  keys() {
+    return this.m.keys();
+  }
+
+  entries() {
+    return this.m.entries();
+  }
+
+  values() {
+    return this.m.values();
+  }
+
+  delete(k: K): boolean {
+    return this.m.delete(k);
+  }
 }
 
 /**
