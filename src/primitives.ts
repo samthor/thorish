@@ -103,7 +103,8 @@ export function inverseLerp(low: number, high: number, value: number) {
 }
 
 /**
- * Returns a random number in the given range. This is the same semantics as {@link Math.random()}.
+ * Returns a random number in the given range.
+ * This is the same semantics as {@link Math.random()}.
  */
 export function randomRange(a: number, b: number = 0) {
   return lerp(a, b, Math.random());
@@ -111,13 +112,33 @@ export function randomRange(a: number, b: number = 0) {
 
 /**
  * Returns a random integer number in the given range.
+ * If only a single number is given, treated as `[0,n)`.
+ * If two numbers are given, treated as `[a,b)`, regardless of relative order.
+ *
+ * For example:
+ *  - `(10)` can give values 0 through 9.
+ *  - `(1, 6)` can give values 1 through 5.
+ *  - `(0, -4)` can give values 0 through -3.
+ *  - `(-4, 0)` can give values -4 through -1.
+ *
+ * Same values always return that value.
+ *
  */
-export function randomRangeInt(a: number, b: number = 0) {
-  if (b < a) {
-    // since we floor, ensure that a<b
-    [a, b] = [b, a];
+export function randomRangeInt(a: number, b?: number) {
+  if (b === undefined) {
+    b = a;
+    a = 0;
   }
-  return Math.floor(randomRange(a, b));
+
+  const o = randomRange(a, b);
+
+  if (a <= b) {
+    // normal
+    return Math.floor(o);
+  } else {
+    // inverted
+    return Math.ceil(o);
+  }
 }
 
 /**

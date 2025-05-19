@@ -23,3 +23,19 @@ test('sub', () => {
   // can't find in empty array
   assert.strictEqual(array.findSubArray([], ['cannot be found']), -1);
 });
+
+test('swap', () => {
+  const arr = ['a', 'b', 'c', 'd', 'e'];
+
+  assert.strictEqual(array.arraySwapRemoveAt(arr, 2), 'c');
+  assert.deepStrictEqual(arr, ['a', 'b', 'e', 'd']);
+
+  assert.strictEqual(array.arraySwapRemoveAt(arr, 3), 'd');
+  assert.deepStrictEqual(arr, ['a', 'b', 'e']);
+
+  assert.strictEqual(array.arraySwapRemoveAt(arr, -3), 'a');
+  assert.deepStrictEqual(arr, ['e', 'b']);
+
+  assert.strictEqual(array.arraySwapRemoveAt(arr, -3), undefined);
+  assert.deepStrictEqual(arr, ['e', 'b']);
+});

@@ -13,6 +13,7 @@ import './object-utils.js';
 import './primitives.js';
 import './promise.js';
 import './record.js';
+import './rope.ts';
 import './queue.js';
 import './sequence.js';
 import './signal.js';
