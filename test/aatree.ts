@@ -32,7 +32,7 @@ test('simple', () => {
   assert.strictEqual(t.after(4141), undefined);
   assert.strictEqual(t.after(-99.999), 1);
 
-  const sorted = numbersToInsert.toSorted((a, b) => a - b);
+  const sorted = [...numbersToInsert].sort((a, b) => a - b);
   for (let i = 1; i < sorted.length; ++i) {
     assert.strictEqual(t.before(sorted[i]), sorted[i - 1]);
   }
