@@ -1,3 +1,4 @@
+import './aatree.ts';
 import './array.js';
 import './bound-proxy.js';
 import './cond.js';

@@ -1,3 +1,4 @@
+export * from './aatree.ts';
 export * from './array.js';
 export * from './bound-proxy.js';
 export * from './cache.js';
