@@ -5,7 +5,7 @@
  */
 
 import { arraySwapInsertAt } from './array.ts';
-import { randInt32 } from './primitives.ts';
+import { randInt32, randomRangeInt } from './primitives.ts';
 
 const u = /* @__PURE__ */ (() => new Uint32Array(1))();
 
@@ -534,8 +534,7 @@ export class Rope<K, T> {
       l.prev = this.head;
     });
 
-    crypto.getRandomValues(u);
-    const pos = u[0] % (this._nodesPool.length + 1);
+    const pos = randomRangeInt(0, this._nodesPool.length + 1);
     arraySwapInsertAt(this._nodesPool, pos, e);
   }
 
