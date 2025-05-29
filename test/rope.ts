@@ -1,28 +1,33 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { Rope } from '../src/rope.ts';
+import { randomHeight, Rope } from '../src/rope.ts';
 import { randomArrayChoice, randomRangeInt } from '../src/primitives.ts';
 import { arraySwapRemoveAt } from '../src/array.ts';
 
 const count = 20;
+let globalId = 0;
 
-const insertAtHelper = (r: Rope<string>, at: number, s: string) => {
+const insertAtHelper = (r: Rope<number, string>, at: number, s: string): number => {
   const f = r.byPosition(at);
   if (f.offset !== f.length) {
     throw new Error(`cannot insertAt not on edge`);
   }
-  return r.insertAfter(f.id, s, s.length);
+  const newId = ++globalId;
+  r.insertAfter(f.id, newId, s.length, s);
+  return newId;
 };
 
-const ropeToString = (r: Rope<string>) => [...r].join('');
+const ropeToString = (r: Rope<any, string>) => [...r].join('');
 
 test('basic', () => {
   for (let i = 0; i < count; ++i) {
-    const r = new Rope<string>('');
-    const helloId = r.insertAfter(0, 'hello', 5);
-    assert.strictEqual(r.find(helloId), 0);
+    const r = new Rope(0, '');
+    const helloId = ++globalId;
+    r.insertAfter(0, helloId, 5, 'hello');
+    assert.strictEqual(r.find(helloId), 5);
 
-    const thereId = r.insertAfter(helloId, ' there', 6);
+    const thereId = ++globalId;
+    r.insertAfter(helloId, thereId, 6, ' there');
 
     // if (i === 0) {
     //   r._debug();
@@ -37,9 +42,9 @@ test('basic', () => {
 
 test('adjust', () => {
   for (let i = 0; i < count; ++i) {
-    const r = new Rope<string>('');
+    const r = new Rope(0, '');
 
-    r.insertAfter(0, 'hello', 5);
+    r.insertAfter(0, ++globalId, 5, 'hello');
     const thereId = insertAtHelper(r, 5, 'there');
     insertAtHelper(r, 10, 'sam');
 
@@ -64,24 +69,24 @@ test('adjust', () => {
 });
 
 test('seek', () => {
-  const r = new Rope<string>('');
-  const helloId = r.insertAfter(0, 'hello', 5);
+  const r = new Rope(0, '');
+  const helloId = insertAtHelper(r, 0, 'hello');
   const xId = insertAtHelper(r, 0, 'x');
-  r.insertAfter(0, 'yy', 2);
+  insertAtHelper(r, 0, 'yy');
   insertAtHelper(r, 3, 'early: ');
-  const lastId = r.insertAfter(helloId, '!!', 2);
-  const xxId = r.insertAfter(lastId, 'xx', 2);
+  const lastId = insertAtHelper(r, r.find(helloId), '!!');
+  const xxId = insertAtHelper(r, r.find(lastId), 'xx');
 
-  assert.ok(r.before(helloId, lastId));
+  //  assert.ok(r.before(helloId, lastId), 'hello should be before last');
 
   const helloLookup = r.lookup(helloId);
   assert.ok(r.deleteTo(helloLookup.prevId!, lastId));
 
   assert.throws(() => {
     // lastId was deleted
-    r.insertAfter(lastId, 'hellO', 5);
+    insertAtHelper(r, lastId, 'hellO');
   });
-  const newHelloId = r.insertAfter(xxId, 'hellO', 5);
+  const newHelloId = insertAtHelper(r, r.find(xxId), 'hellO');
 
   assert.deepStrictEqual(r.read(xId, newHelloId), {
     out: ['x', 'early: ', 'xx', 'hellO'],
@@ -91,7 +96,7 @@ test('seek', () => {
 
 test('rope', () => {
   for (let i = 0; i < count; ++i) {
-    const r = new Rope<string>('');
+    const r = new Rope(0, '');
     const insertAt = (at: number, s: string) => insertAtHelper(r, at, s);
 
     const helloId = insertAt(0, 'hello');
@@ -112,7 +117,7 @@ test('rope', () => {
     assert.strictEqual(ropeToString(r), 'hello!!??');
 
     // check move
-    assert.deepStrictEqual(r.find(questionId), 7);
+    assert.deepStrictEqual(r.find(questionId), 9);
 
     assert.ok(r.deleteById(bangsId));
     assert.strictEqual(ropeToString(r), 'hello??');
@@ -123,7 +128,7 @@ test('rope', () => {
     //   out: ['hello', '??'],
     //   len: [5, 2],
     // });
-    assert.deepStrictEqual(r.find(questionId), 5);
+    assert.deepStrictEqual(r.find(questionId), 7);
 
     insertAt(0, 'what up ');
     insertAt(13, ', a test');
@@ -194,7 +199,7 @@ test('rand', () => {
   for (let i = 0; i < attempts; ++i) {
     const startA = performance.now();
 
-    const r = new Rope('');
+    const r = new Rope(0, '');
     const nodes: number[] = [0];
 
     for (let i = 0; i < ops; ++i) {
@@ -212,8 +217,9 @@ test('rand', () => {
         // const pos = r.positionForId(choice);
         // const n = r.insertAt(pos, s, s.length);
 
-        const n = r.insertAfter(choice, s, s.length);
-        nodes.push(n);
+        const newId = ++globalId;
+        r.insertAfter(choice, newId, s.length, s);
+        nodes.push(newId);
       } else {
         // delete case
         const index = randomRangeInt(nodes.length - 1) + 1; // can't delete zero

@@ -1,3 +1,5 @@
+const u = /* @__PURE__ */ (() => new Int32Array(1))();
+
 /**
  * Returns a basic hash of the string or {@link ArrayLike}.
  */
@@ -108,6 +110,16 @@ export function inverseLerp(low: number, high: number, value: number) {
  */
 export function randomRange(a: number, b: number = 0) {
   return lerp(a, b, Math.random());
+}
+
+/**
+ * Returns a random int32, from the crypto lib.
+ *
+ * It's not clear this is particularly fast versus {@link Math.random}.
+ */
+export function randInt32(): number {
+  crypto.getRandomValues(u);
+  return u[0];
 }
 
 /**
