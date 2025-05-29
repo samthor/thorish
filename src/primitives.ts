@@ -1,19 +1,21 @@
-const u = /* @__PURE__ */ (() => new Int32Array(16384))();
-let ui = u.length;
-
 /**
  * Returns a random signed int32, from the crypto lib via a pool.
  *
  * This is on par with {@link Math.random} rather than being significantly faster.
  * It has a 'startup cost' which makes benchmarking hard, and seems to get faster the more numbers you request.
  */
-export function randInt32(): number {
-  if (ui === u.length) {
-    crypto.getRandomValues(u);
-    ui = 0;
-  }
-  return u[ui++];
-}
+export const randInt32 = /* @__PURE__ */ (() => {
+  const u = new Int32Array(16384);
+  let ui = u.length;
+
+  return function randInt32(): number {
+    if (ui === u.length) {
+      crypto.getRandomValues(u);
+      ui = 0;
+    }
+    return u[ui++];
+  };
+})();
 
 /**
  * Returns a basic hash of the string or {@link ArrayLike}.
