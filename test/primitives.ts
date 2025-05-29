@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import * as primitives from '../src/primitives.js';
+import * as primitives from '../src/primitives.ts';
 
 test('hashCode', async () => {
   assert.strictEqual(primitives.hashCode(''), 0);

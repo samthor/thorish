@@ -1,4 +1,19 @@
-const u = /* @__PURE__ */ (() => new Int32Array(1))();
+const u = /* @__PURE__ */ (() => new Int32Array(16384))();
+let ui = u.length;
+
+/**
+ * Returns a random signed int32, from the crypto lib via a pool.
+ *
+ * This is on par with {@link Math.random} rather than being significantly faster.
+ * It has a 'startup cost' which makes benchmarking hard, and seems to get faster the more numbers you request.
+ */
+export function randInt32(): number {
+  if (ui === u.length) {
+    crypto.getRandomValues(u);
+    ui = 0;
+  }
+  return u[ui++];
+}
 
 /**
  * Returns a basic hash of the string or {@link ArrayLike}.
@@ -110,16 +125,6 @@ export function inverseLerp(low: number, high: number, value: number) {
  */
 export function randomRange(a: number, b: number = 0) {
   return lerp(a, b, Math.random());
-}
-
-/**
- * Returns a random int32, from the crypto lib.
- *
- * It's not clear this is particularly fast versus {@link Math.random}.
- */
-export function randInt32(): number {
-  crypto.getRandomValues(u);
-  return u[0];
 }
 
 /**
