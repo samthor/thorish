@@ -69,6 +69,8 @@ export function arraySwapRemoveAt<X>(arr: X[], at: number): X | undefined {
 /**
  * Inserts a value at the given index in the array by swapping any previous value to the end.
  *
+ * This 'always works' because indexes <=0 are treated as zero, and indexes >=length are treated as a push.
+ *
  * Has {@link Array.at}-like semantics, supporting negative addressing.
  */
 export function arraySwapInsertAt<X>(arr: X[], at: number, value: X) {

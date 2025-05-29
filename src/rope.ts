@@ -5,9 +5,7 @@
  */
 
 import { arraySwapInsertAt } from './array.ts';
-import { randInt32, randomRangeInt } from './primitives.ts';
-
-const u = /* @__PURE__ */ (() => new Uint32Array(1))();
+import { randomRangeInt } from './primitives.ts';
 
 /**
  * Returns a value [1,31] inclusive, with 50% chance of 1, 25% chance of 2, 12.5% chance of 3, ...
@@ -431,6 +429,7 @@ export class Rope<K, T> {
         }
 
         // grow head stuff (these are ref'ed to the _nodesBuffer and _subBuffer respectively)
+        // nb. we automatically resize these when we use them ...
         // nodes.push(zeroNode);
         // sub.push(0);
 
