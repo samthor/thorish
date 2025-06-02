@@ -230,30 +230,26 @@ export class Rope<K, T> {
   }
 
   /**
-   * Find the ID for the given position.
+   * Find the ID for the given position, and the offset from the end of that ID.
    *
    * By default, this will be the left-most ID that contains the position (even 'at end').
    * For example, looking up `offset=0` in an already-used rope will always yield `id=0`, as it has zero length.
    *
    * Specify the `biasEnd` parameter to flip this behavior.
    */
-  byPosition(
-    offset: number,
-    biasAfter: boolean = false,
-  ): { id: K; offset: number; length: number; data: T } {
-    if (offset < 0) {
-      offset = this._length + offset;
+  byPosition(position: number, biasAfter: boolean = false): { id: K; offset: number } {
+    if (position < 0) {
+      position = this._length + position;
     }
-    if (offset < 0 || offset > this._length || Math.floor(offset) !== offset) {
-      throw new Error(`invalid offset within rope: offset=${offset} length=${this.length()}`);
+    if (position < 0 || position > this._length || Math.floor(position) !== position) {
+      throw new Error(`invalid offset within rope: position=${position} length=${this.length()}`);
     }
 
     let e = this.head;
-    let h = e.levels.length;
-    outer: while (h--) {
+    outer: for (let h = e.levels.length - 1; h >= 0; h--) {
       // traverse this height while we can
-      while (offset > e.levels[h].subtreesize) {
-        offset -= e.levels[h].subtreesize;
+      while (position > e.levels[h].subtreesize) {
+        position -= e.levels[h].subtreesize;
 
         const next = e.levels[h].next;
         if (!next) {
@@ -263,13 +259,13 @@ export class Rope<K, T> {
       }
 
       // if we bias to end, move as far forward as possible (even zero)
-      while (biasAfter && offset >= e.levels[h].subtreesize && e.levels[h].next) {
-        offset -= e.levels[h].subtreesize;
+      while (biasAfter && position >= e.levels[h].subtreesize && e.levels[h].next) {
+        position -= e.levels[h].subtreesize;
         e = e.levels[h].next!;
       }
     }
 
-    return { id: e.id, offset, length: e.length, data: e.data };
+    return { id: e.id, offset: e.length - position };
   }
 
   /**

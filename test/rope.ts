@@ -9,7 +9,7 @@ let globalId = 0;
 
 const insertAtHelper = (r: Rope<number, string>, at: number, s: string): number => {
   const f = r.byPosition(at);
-  if (f.offset !== f.length) {
+  if (f.offset) {
     throw new Error(`cannot insertAt not on edge`);
   }
   const newId = ++globalId;
@@ -61,9 +61,7 @@ test('adjust', () => {
 
     assert.deepStrictEqual(r.byPosition(5, true), {
       id: thereId,
-      data: '!',
-      length: 1,
-      offset: 0,
+      offset: 1,
     });
   }
 });
@@ -102,12 +100,10 @@ test('rope', () => {
     const helloId = insertAt(0, 'hello');
     assert.strictEqual(ropeToString(r), 'hello');
 
-    assert.deepStrictEqual(r.byPosition(0), { data: '', id: 0, offset: 0, length: 0 });
+    assert.deepStrictEqual(r.byPosition(0), { id: 0, offset: 0 });
     assert.deepStrictEqual(r.byPosition(0, true), {
-      data: 'hello',
       id: helloId,
-      offset: 0,
-      length: 5,
+      offset: 5,
     });
 
     const questionId = insertAt(5, '??');
@@ -154,22 +150,16 @@ test('rope', () => {
     assert.strictEqual(r.length(), ropeToString(r).length);
 
     assert.deepStrictEqual(r.byPosition('what up hello[6][5][4][3][2][1][0]'.length, true), {
-      data: 'it is',
       id: itisId,
-      offset: 0,
-      length: 5,
+      offset: 5,
     });
     assert.deepStrictEqual(r.byPosition('what up hello[6][5][4][3][2][1][0]i'.length), {
-      data: 'it is',
       id: itisId,
-      offset: 1,
-      length: 5,
+      offset: 4,
     });
     assert.deepStrictEqual(r.byPosition('what up hello[6][5][4][3][2][1][0]i'.length, true), {
-      data: 'it is',
       id: itisId,
-      offset: 1,
-      length: 5,
+      offset: 4,
     });
 
     // if (i === 0) {
