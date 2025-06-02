@@ -11,6 +11,8 @@ const insertAtHelper = (r: Rope<number, string>, at: number, s: string): number 
   const f = r.byPosition(at);
   if (f.offset) {
     throw new Error(`cannot insertAt not on edge`);
+  } else if (f.offset === 0) {
+    //    r.lookup(at);
   }
   const newId = ++globalId;
   r.insertAfter(f.id, newId, s.length, s);
@@ -80,10 +82,10 @@ test('seek', () => {
   const helloLookup = r.lookup(helloId);
   assert.ok(r.deleteTo(helloLookup.prevId!, lastId));
 
-  assert.throws(() => {
-    // lastId was deleted
-    insertAtHelper(r, lastId, 'hellO');
-  });
+  // assert.throws(() => {
+  //   // lastId was deleted
+  //   insertAtHelper(r, lastId, 'hellO');
+  // });
   const newHelloId = insertAtHelper(r, r.find(xxId), 'hellO');
 
   assert.deepStrictEqual(r.read(xId, newHelloId), {

@@ -231,6 +231,7 @@ export class Rope<K, T> {
 
   /**
    * Find the ID for the given position, and the offset from the end of that ID.
+   * Always returns a valid value, is clamped to edge.
    *
    * By default, this will be the left-most ID that contains the position (even 'at end').
    * For example, looking up `offset=0` in an already-used rope will always yield `id=0`, as it has zero length.
@@ -238,11 +239,10 @@ export class Rope<K, T> {
    * Specify the `biasEnd` parameter to flip this behavior.
    */
   byPosition(position: number, biasAfter: boolean = false): { id: K; offset: number } {
-    if (position < 0) {
-      position = this._length + position;
-    }
-    if (position < 0 || position > this._length || Math.floor(position) !== position) {
-      throw new Error(`invalid offset within rope: position=${position} length=${this.length()}`);
+    if (position < 0 || (!biasAfter && position === 0)) {
+      return { id: this.zeroId, offset: 0 };
+    } else if (position > this._length || (biasAfter && position == this._length)) {
+      return { id: this.tail.id, offset: 0 };
     }
 
     let e = this.head;
