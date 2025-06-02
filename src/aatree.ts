@@ -21,6 +21,18 @@ export class AATree<X extends F, F = X> {
 
   constructor(private compare: (a: F, b: F) => number) {}
 
+  /**
+   * Clones this {@link AATree} using {@link structuredClone}.
+   */
+  clone(): AATree<X, F> {
+    const t = new AATree<X, F>(this.compare);
+
+    t.root = structuredClone(this.root);
+    t._count = this._count;
+
+    return t;
+  }
+
   clear() {
     this.root = null;
     this._count = 0;

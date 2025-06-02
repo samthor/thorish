@@ -37,8 +37,18 @@ test('basic', () => {
 
     assert.strictEqual(r.last(), thereId);
 
+    const r2 = r.clone();
+    r.deleteById(helloId);
+    assert.strictEqual(r2.find(helloId), 5);
+    assert.throws(() => r.find(helloId));
+    assert.strictEqual(r2.last(), thereId);
+    assert.strictEqual(r.last(), thereId);
+
     r.deleteById(thereId);
-    assert.strictEqual(r.last(), helloId);
+    assert.strictEqual(r.last(), 0);
+    assert.strictEqual(r2.last(), thereId);
+    r2.deleteById(thereId);
+    assert.strictEqual(r2.last(), helloId);
   }
 });
 

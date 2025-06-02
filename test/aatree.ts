@@ -36,6 +36,16 @@ test('simple', () => {
   for (let i = 1; i < sorted.length; ++i) {
     assert.strictEqual(t.before(sorted[i]), sorted[i - 1]);
   }
+
+  const t2 = t.clone();
+
+  t2.remove(48);
+  assert.strictEqual(t.query(48), 48);
+  assert.strictEqual(t2.query(48), undefined);
+
+  t2.insert(47);
+  assert.strictEqual(t.equalAfter(47), 48);
+  assert.strictEqual(t2.equalAfter(46), 47);
 });
 
 test('tree', () => {

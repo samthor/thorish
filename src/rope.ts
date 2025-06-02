@@ -53,11 +53,11 @@ export type RopeRead<T> = {
  */
 export class Rope<K, T> {
   private _length: number;
-  private readonly head: NodeType<K, T>;
+  private head: NodeType<K, T>;
   private tail: NodeType<K, T>;
 
   private readonly zeroId: K;
-  private readonly byId = new Map<K, NodeType<K, T>>();
+  private byId = new Map<K, NodeType<K, T>>();
 
   // We use these as the results of `rseek` and `rseekNodes`.
   // Otherwise we keep recreating pointless arrays.
@@ -65,6 +65,43 @@ export class Rope<K, T> {
   private readonly _subBuffer: number[] = [];
 
   private readonly _nodesPool: NodeType<K, T>[] = [];
+
+  /**
+   * Clones this {@link Rope} using {@link structuredClone}.
+   */
+  clone(): Rope<K, T> {
+    const r = new Rope<K, T>(this.zeroId, this.head.data);
+
+    r.byId = structuredClone(this.byId);
+    r.head = r.byId.get(this.zeroId)!;
+    r.tail = r.byId.get(this.tail.id)!;
+    this._length = r._length;
+
+    if (r.head === undefined || r.tail === undefined) {
+      throw new Error(`bad Rope clone`);
+    }
+
+    return r;
+  }
+
+  constructor(zeroId: K, root: T) {
+    this.head = {
+      data: root,
+      id: zeroId,
+      length: 0,
+      levels: [],
+    };
+    this.head.levels.push({
+      next: null,
+      prev: this.head,
+      subtreesize: 0,
+    });
+    this.byId.set(zeroId, this.head);
+    this._length = 0;
+    this.zeroId = zeroId;
+
+    this.tail = this.head;
+  }
 
   length() {
     return this._length;
@@ -156,25 +193,6 @@ export class Rope<K, T> {
 
     console.info('');
     console.info('<');
-  }
-
-  constructor(zeroId: K, root: T) {
-    this.head = {
-      data: root,
-      id: zeroId,
-      length: 0,
-      levels: [],
-    };
-    this.head.levels.push({
-      next: null,
-      prev: this.head,
-      subtreesize: 0,
-    });
-    this.byId.set(zeroId, this.head);
-    this._length = 0;
-    this.zeroId = zeroId;
-
-    this.tail = this.head;
   }
 
   *[Symbol.iterator]() {
