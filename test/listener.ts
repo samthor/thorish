@@ -1,7 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
 import { namedListeners, soloListener } from '../src/listener.ts';
-import { neverAbortedSignal } from '../src/signal.ts';
+import { derivedSignal, neverAbortedSignal } from '../src/signal.ts';
 import { timeout } from '../src/promise.ts';
 
 test('always unique', () => {
@@ -110,4 +110,29 @@ test('wrap et', () => {
   assert.strictEqual(anySetupCalls, 2); // called again
   nl.dispatch('x', 345);
   assert.strictEqual(count, 3);
+});
+
+test('hasAny', () => {
+  const nl = namedListeners<{ foo: number }>();
+
+  assert.strictEqual(nl.hasAny('foo'), false);
+  assert.strictEqual(nl.hasAny('unrelated' as any), false);
+
+  const { signal, abort } = derivedSignal();
+
+  nl.addListener(
+    'foo',
+    () => {
+      // whatever
+    },
+    signal,
+  );
+
+  assert.strictEqual(nl.hasAny('foo'), true);
+  assert.strictEqual(nl.hasAny('unrelated' as any), false);
+
+  abort();
+
+  assert.strictEqual(nl.hasAny('foo'), false);
+  assert.strictEqual(nl.hasAny('unrelated' as any), false);
 });

@@ -23,6 +23,11 @@ export type NamedListeners<T extends Record<string, any>> = {
   any<K extends keyof T>(name: K, handler: (signal: AbortSignal) => void, signal?: AbortSignal);
 
   /**
+   * Synchronous check to see if anyone is listening to the give event.
+   */
+  hasAny<K extends keyof T>(name: K): boolean;
+
+  /**
    * Converts this {@link NamedListeners} to an {@link EventTarget}.
    *
    * The types here a bit funky.
@@ -40,6 +45,7 @@ export type SoloListener<V> = {
   addListener(listener: (data: V) => void, signal: AbortSignal): void;
   dispatch(data: V): boolean;
   any(handler: (signal: AbortSignal) => void, signal: AbortSignal);
+  hasAny(): boolean;
 };
 
 type InternalListener = {
@@ -119,6 +125,10 @@ export function namedListeners<T extends Record<string, any>>(): NamedListeners<
       }
     },
 
+    hasAny(name): boolean {
+      return listeners.has(name);
+    },
+
     dispatch(name, arg) {
       const s = listeners.get(name);
       s?.listeners.forEach((l) => l(arg));
@@ -147,6 +157,9 @@ export function soloListenerFrom<T extends Record<string, any>, K extends keyof 
     },
     any(callback, signal) {
       nl.any(name, callback, signal);
+    },
+    hasAny() {
+      return nl.hasAny(name);
     },
   };
 }
