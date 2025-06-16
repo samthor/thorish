@@ -2,7 +2,29 @@ import test from 'node:test';
 import * as assert from 'node:assert';
 import { namedListeners, soloListener } from '../src/listener.ts';
 import { derivedSignal, neverAbortedSignal } from '../src/signal.ts';
-import { timeout } from '../src/promise.ts';
+
+test('void listener', () => {
+  // n.b. isn't really a test but will annoy me if the TS compiler fails
+
+  const l = namedListeners<{ void: void; undefined; null: null; number: number }>();
+  l.dispatch('void');
+  l.dispatch('undefined');
+  l.dispatch('undefined', undefined);
+
+  // @ts-expect-error
+  l.dispatch('undefined', undefined, undefined);
+
+  // @ts-expect-error
+  l.dispatch('null');
+  l.dispatch('null', null);
+
+  // @ts-expect-error
+  l.dispatch('null', null, null);
+
+  // @ts-expect-error
+  l.dispatch('number');
+  l.dispatch('number', 123);
+});
 
 test('always unique', () => {
   const l = soloListener<void>();

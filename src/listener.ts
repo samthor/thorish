@@ -15,7 +15,7 @@ export type NamedListeners<T extends Record<string, any>> = {
    *
    * Returns `true` if any listeners were invoked.
    */
-  dispatch<K extends keyof T>(name: K, arg: T[K]): boolean;
+  dispatch<K extends keyof T>(name: K, ...a: T[K] extends void ? [undefined?] : [T[K]]): boolean;
 
   /**
    * Runs a handler when any listeners are defined for the given name.
@@ -129,6 +129,7 @@ export function namedListeners<T extends Record<string, any>>(): NamedListeners<
       return listeners.has(name);
     },
 
+    // @ts-expect-error TS is confused because it thinks we should use `...arg`
     dispatch(name, arg) {
       const s = listeners.get(name);
       s?.listeners.forEach((l) => l(arg));
