@@ -2,11 +2,18 @@
  * A dead-simple cache helper.
  */
 export class SimpleCache<K, V> {
-  private m = new Map<K, V>();
-  private gen: (k: K) => V;
+  private readonly m = new Map<K, V>();
+  constructor(private readonly gen: (k: K) => V) {}
 
-  constructor(gen: (k: K) => V) {
-    this.gen = gen;
+  /**
+   * Copies this as a regular {@link Map}.
+   */
+  copy(): Map<K, V> {
+    return new Map(this.m);
+  }
+
+  has(k: K): boolean {
+    return this.m.has(k);
   }
 
   get(k: K) {
