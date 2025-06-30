@@ -141,3 +141,18 @@ export function deepFreeze(object: any): void {
 
   return object;
 }
+
+/**
+ * Deletes and reassigns the given properties on the object.
+ *
+ * This is useful for upgraded Custom Elements.
+ */
+export function reassignOwnProperty(target: Object, props: Iterable<string>) {
+  for (const prop of props) {
+    if (Object.prototype.hasOwnProperty.call(target, prop)) {
+      const v = target[prop];
+      delete target[prop];
+      target[prop] = v;
+    }
+  }
+}

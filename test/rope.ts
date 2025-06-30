@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { randomHeight, Rope } from '../src/rope.ts';
+import { Rope } from '../src/rope.ts';
 import { randomArrayChoice, randomRangeInt } from '../src/primitives.ts';
 import { arraySwapRemoveAt } from '../src/array.ts';
 

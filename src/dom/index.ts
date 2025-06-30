@@ -104,8 +104,6 @@ export function buildShadowOptions(
   };
 }
 
-const temporaryHtmlEscaper: Element = /* @__PURE__ */ document.createElement('span');
-
 /**
  * Simple HTML superclass which provides an abstract {@link SignalHTMLElement#refresh} method which is called when the element is mounted.
  *
