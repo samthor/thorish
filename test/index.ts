@@ -1,6 +1,7 @@
 import './aatree.ts';
 import './array.js';
 import './bound-proxy.js';
+import './cgroup.ts';
 import './cond.js';
 import './counter.js';
 import './effect.js';

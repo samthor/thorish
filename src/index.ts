@@ -2,6 +2,7 @@ export * from './aatree.ts';
 export * from './array.js';
 export * from './bound-proxy.js';
 export * from './cache.js';
+export * from './cgroup.ts';
 export * from './cond.js';
 export * from './conn.js';
 export * from './counter.js';
