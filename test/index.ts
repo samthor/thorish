@@ -17,6 +17,7 @@ import './promise.js';
 import './record.js';
 import './rope.ts';
 import './queue.js';
+import './select.ts';
 import './sequence.js';
 import './signal.js';
 import './stream.js';
