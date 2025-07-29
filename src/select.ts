@@ -1,13 +1,17 @@
 import { promiseWithResolvers } from './promise.ts';
+import { promiseForSignal } from './signal.ts';
 
 /**
  * Channel is borrowed from Go.
+ *
+ * It doesn't have a notion of buffered; it's not for communication, just for scheduling.
+ * Channels have infinite buffer space, however, you can use {@link Channel.push} to wait for a pushed value to be consumed.
  *
  * It's similar to but subtly different from a {@link AsyncGenerator}.
  * Whereas calling {@link AsyncGenerator.next} repeatedly creates a {@link Promise} of the next value, here, we instead wait for a value to be available before choosing to obtain it.
  * In this way it lends itself to "pull" semantics; the consumer of one or many {@link Channel} instances can decide how to proceed.
  */
-export type Channel<T> = ReadChannel<T> & {
+export type Channel<T> = {
   /**
    * Push this value into the {@link Channel}.
    * Returns a {@link Promise} which resolves when it is consumed (optional).
@@ -16,12 +20,28 @@ export type Channel<T> = ReadChannel<T> & {
 
   /**
    * Closes this channel.
-   * No more values can be pushed, and the given value will be provided in perpetuity.
+   * No more values can be pushed, and the given value will be provided in perpetuity (i.e., will always be available).
+   *
+   * You must disambiguate T yourself to identify a closed channel.
    */
   close(t: T): void;
-};
+
+  /**
+   * Waits until a value from this channel is available.
+   *
+   * This is as {@link ReadChannel.wait}, but with a wider type.
+   */
+  wait<V = Channel<T>>(value?: V): Promise<V>;
+} & ReadChannel<T>;
 
 export type ReadChannel<T> = {
+  /**
+   * Returns whether this channel is closed _and_ the close value has been provided via {@link ReadChannel.next}.
+   *
+   * This can be used to e.g., prematurely exit a loop or check what value was just retrieved.
+   */
+  readonly closed: boolean;
+
   /**
    * Waits until a value from this channel is available.
    *
@@ -31,7 +51,7 @@ export type ReadChannel<T> = {
    * For no other reason than convenience, this resolves with itself.
    * This isn't the value itself, the assumption is you can then synchronously consume the next value with {@link Channel#next}.
    */
-  wait(): Promise<Channel<T>>;
+  wait<V = ReadChannel<T>>(value?: V): Promise<V>;
 
   /**
    * Returns whether {@link Channel#next} has an available value.
@@ -45,25 +65,14 @@ export type ReadChannel<T> = {
   next(): T | undefined;
 };
 
-/**
- * Waits for the first {@link Channel} that is ready.
- * This is a thinly veiled wrapper over {@link Promise.race}.
- */
-export function select(...channels: Channel<any>[]): Promise<Channel<any>> {
-  if (channels.length === 0) {
-    throw new Error(`select must be called with at least one channel`);
-  }
-  const sync = selectDefault(...channels);
-  if (sync !== undefined) {
-    return sync.wait();
-  }
+type MessageType<Q> = Q extends Channel<infer X> ? X : never;
 
-  const o = channels.map((c) => c.wait());
-  return Promise.race(o);
-}
-
-type SelectResult<TChannels extends Record<string, Channel<any>>> = {
-  [TKey in keyof TChannels]: TKey;
+type SelectResult<TChannels extends Record<string, ReadChannel<any>>> = {
+  [TKey in keyof TChannels]: Readonly<{
+    key: TKey;
+    ch: ReadChannel<TChannels[TKey]>;
+    m: MessageType<TChannels[TKey]>;
+  }>;
 }[keyof TChannels];
 
 /**
@@ -72,47 +81,41 @@ type SelectResult<TChannels extends Record<string, Channel<any>>> = {
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export async function keyedSelect<TChannels extends { [key: string | symbol]: Channel<any> }>(
+export function select<TChannels extends { [key: string | symbol]: ReadChannel<any> }>(
   o: TChannels,
 ): Promise<SelectResult<TChannels>> {
-  for (const key of Reflect.ownKeys(o)) {
-    const ch = o[key];
-    if (ch.pending()) {
-      return (ch as any as ChannelImpl<any>).wait(key);
-    }
+  const sync = selectDefault(o);
+  if (sync !== undefined) {
+    // nb. load-bearing extra Promise.resolve()
+    return Promise.resolve().then(() => sync);
   }
 
-  const options = Object.entries(o).map(([key, ch]) => {
-    return (ch as any as ChannelImpl<any>).wait(key);
-  });
-  return Promise.race(options) as any;
+  const e = Object.entries(o);
+  const options = e.map(([key, ch]) => ch.wait({ key, ch, m: undefined }));
+  return (
+    Promise.race(options)
+      .then((choice) => {
+        choice.m = choice.ch.next();
+        return choice as any;
+      })
+      // nb. load-bearing
+      .then((x) => x)
+  );
 }
 
 /**
- * Selects the first {@link Channel} that is ready, or `undefined` if none are ready.
- */
-export function selectDefault(...channels: Channel<any>[]): Channel<any> | undefined {
-  for (const ch of channels) {
-    if (ch.pending()) {
-      return ch;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Selects the first {@link Channel} that is ready, or `undefined` if none are ready.
+ * Selects the first {@link ReadChannel} that is ready, or `undefined` if none are ready.
  * Returns with the key for matching.
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function keyedSelectDefault<TChannels extends { [key: string | symbol]: Channel<any> }>(
+export function selectDefault<TChannels extends { [key: string | symbol]: ReadChannel<any> }>(
   o: TChannels,
 ): SelectResult<TChannels> | undefined {
   for (const key of Reflect.ownKeys(o)) {
     const ch = o[key];
     if (ch.pending()) {
-      return key;
+      return { key, ch, m: ch.next() };
     }
   }
   return undefined;
@@ -133,11 +136,17 @@ type ChannelItem<T> = {
 
 class ChannelImpl<T> implements Channel<T> {
   private _closed = false;
+  private closeFinalized = false;
+
+  get closed() {
+    return this.closeFinalized;
+  }
 
   private head: ChannelItem<T> | null = null;
   private tail: ChannelItem<T> | null = null;
 
   private readonly waits: {
+    promise: Promise<any>;
     resolve: () => void;
   }[] = [];
 
@@ -152,7 +161,8 @@ class ChannelImpl<T> implements Channel<T> {
     this.resolveTask = this.resolveTask.then(async () => {
       try {
         while (this.tail !== null && this.waits.length) {
-          this.waits.shift()!.resolve();
+          const w = this.waits.shift()!;
+          w.resolve();
           await Promise.resolve();
         }
       } finally {
@@ -161,9 +171,10 @@ class ChannelImpl<T> implements Channel<T> {
     });
   }
 
-  wait<Q = Channel<T>>(value: Q = this as unknown as Q): Promise<Q> {
-    const pr = promiseWithResolvers<Q>();
-    this.waits.push({ resolve: () => pr.resolve(value) });
+  // awkward typing to allow automatic resolution with any other value
+  wait<V = Channel<T>>(value: V = this as any): Promise<V> {
+    const pr = promiseWithResolvers<V>();
+    this.waits.push({ promise: pr.promise, resolve: () => pr.resolve(value) });
 
     this.kickoffResolveTask();
 
@@ -182,7 +193,7 @@ class ChannelImpl<T> implements Channel<T> {
     const item = this.tail;
 
     if (item.next === null && this._closed) {
-      // do nothing
+      this.closeFinalized = true;
     } else {
       this.tail = item.next;
       if (this.tail === null) {
@@ -225,14 +236,58 @@ class ChannelImpl<T> implements Channel<T> {
   }
 }
 
-export function channelForSignal(s: AbortSignal) {
-  const c = newChannel<AbortSignal>();
+/**
+ * Converts a {@link AbortSignal} into a channel which is closed when it aborts.
+ */
+export function channelForSignal<T = AbortSignal>(s: AbortSignal, v: T = s as any): ReadChannel<T> {
+  const o = {
+    closed: false,
 
-  if (s.aborted) {
-    c.close(s);
-    return c;
-  }
+    async wait<V = ReadChannel<T>>(value: V = o as any): Promise<V> {
+      if (s.aborted) {
+        return value;
+      }
+      return new Promise((r) => s.addEventListener('abort', () => r(value)));
+    },
 
-  s.addEventListener('abort', () => c.close(s));
+    pending(): boolean {
+      return s.aborted;
+    },
+
+    next(): T | undefined {
+      if (s.aborted) {
+        o.closed = true;
+        return v;
+      }
+      return undefined;
+    },
+  };
+
+  return o;
+}
+
+/**
+ * Converts a {@link AsyncGenerator} to a channel which contains {@link IteratorResult}.
+ */
+export function channelForGenerator<T, TReturn>(
+  g: AsyncGenerator<T, TReturn, void>,
+): ReadChannel<IteratorResult<T, TReturn>> {
+  const c = newChannel<IteratorResult<T, TReturn>>();
+
+  (async function () {
+    let nextPromise = g.next();
+    for (;;) {
+      const next = await nextPromise;
+      if (next.done) {
+        c.close(next);
+        return;
+      }
+
+      // queue for next before we push and wait for consume
+      nextPromise = g.next();
+      await c.push(next);
+    }
+  })();
+
   return c;
 }

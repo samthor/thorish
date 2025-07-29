@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { channelForSignal, keyedSelect, newChannel, select } from '../src/select.ts';
+import { channelForGenerator, channelForSignal, newChannel, select } from '../src/select.ts';
 import { timeout } from '../src/promise.ts';
 
 test('select', async () => {
@@ -10,13 +10,8 @@ test('select', async () => {
   ch1.push('abc');
 
   const task = async () => {
-    await select(ch1);
-
-    const v = ch1.next();
-    if (v === undefined) {
-      throw new Error(`no value available on next()`);
-    }
-    results.push(v);
+    const out = await select({ ch1: ch1 });
+    results.push(out.m);
   };
 
   const p1 = task();
@@ -36,14 +31,23 @@ const testSymbol2 = Symbol('aaaa');
 
 test('keyed', async () => {
   const a = newChannel<string>();
-  a.push('lol');
+  Promise.resolve().then(() => a.push('lol'));
 
-  const out = await keyedSelect({
+  const b = newChannel<number>();
+
+  const out = await select({
     a,
-    [testSymbol]: newChannel<number>(),
+    b,
   });
+  assert.deepStrictEqual(out, { key: 'a', ch: a, m: 'lol' });
 
-  assert.strictEqual(out, 'a');
+  Promise.resolve().then(() => b.push(123));
+
+  const out2 = await select({
+    a,
+    b,
+  });
+  assert.deepStrictEqual(out2, { key: 'b', ch: b, m: 123 });
 });
 
 test('consume', async () => {
@@ -68,14 +72,14 @@ test('consume', async () => {
 test('close', async () => {
   const c = new AbortController();
   c.abort();
-  const ch = channelForSignal(c.signal);
+  const ch = channelForSignal(c.signal, 1 as const);
 
   const abortSymbol = Symbol('abort');
 
-  const out = await keyedSelect({ [abortSymbol]: ch });
-  assert.strictEqual(out, abortSymbol);
+  const out = await select({ [abortSymbol]: ch });
+  assert.deepStrictEqual(out, { key: abortSymbol, ch, m: 1 });
 
-  switch (out) {
+  switch (out.key) {
     case abortSymbol:
       break;
     default:
@@ -84,8 +88,8 @@ test('close', async () => {
 
   const v = ch.next();
   const v2 = ch.next();
-  assert.strictEqual(v, c.signal);
-  assert.strictEqual(v2, c.signal);
+  assert.strictEqual(v, 1);
+  assert.strictEqual(v2, 1);
 });
 
 test('order', () => {
@@ -100,5 +104,42 @@ test('order', () => {
     '1.0': true,
   };
 
-  console.info(Reflect.ownKeys(o), Object.keys(o));
+  const expectedStringKeys = ['0', '1', 'b', 'a', '-1', '1.0'];
+
+  assert.deepStrictEqual(Object.keys(o), expectedStringKeys);
+  assert.deepStrictEqual(Reflect.ownKeys(o), [...expectedStringKeys, testSymbol2, testSymbol]);
+});
+
+test('gen', async () => {
+  const g1 = (async function* () {
+    yield 1;
+    yield 2;
+    return 3;
+  })();
+
+  const g2 = (async function* () {
+    yield 'a';
+    yield 'b';
+    return 'c';
+  })();
+
+  const c1 = channelForGenerator(g1);
+  const c2 = channelForGenerator(g2);
+
+  const values: any[] = [];
+
+  for (;;) {
+    const c = await select({ c1, c2 });
+    values.push(c.m);
+
+    if (c.ch.closed) {
+      break;
+    }
+  }
+
+  assert.deepStrictEqual(values, [
+    { done: false, value: 1 },
+    { done: false, value: 2 },
+    { done: true, value: 3 },
+  ]);
 });
