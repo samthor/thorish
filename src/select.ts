@@ -65,7 +65,7 @@ export type ReadChannel<T> = {
   next(): T | undefined;
 };
 
-type MessageType<Q> = Q extends Channel<infer X> ? X : never;
+type MessageType<Q> = Q extends ReadChannel<infer X> ? X : never;
 
 type SelectResult<TChannels extends Record<string, ReadChannel<any>>> = {
   [TKey in keyof TChannels]: Readonly<{
