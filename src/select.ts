@@ -70,7 +70,7 @@ type MessageType<Q> = Q extends Channel<infer X> ? X : never;
 type SelectResult<TChannels extends Record<string, ReadChannel<any>>> = {
   [TKey in keyof TChannels]: Readonly<{
     key: TKey;
-    ch: ReadChannel<TChannels[TKey]>;
+    ch: TChannels[TKey];
     m: MessageType<TChannels[TKey]>;
   }>;
 }[keyof TChannels];
@@ -115,7 +115,7 @@ export function selectDefault<TChannels extends { [key: string | symbol]: ReadCh
   for (const key of Reflect.ownKeys(o)) {
     const ch = o[key];
     if (ch.pending()) {
-      return { key, ch, m: ch.next() };
+      return { key, ch: ch as any, m: ch.next() };
     }
   }
   return undefined;
