@@ -1,5 +1,6 @@
 import { promiseWithResolvers } from './promise.ts';
-import { promiseForSignal } from './signal.ts';
+
+const signalCache = new WeakMap<AbortSignal, Promise<void>>();
 
 /**
  * Channel is borrowed from Go.
@@ -83,20 +84,58 @@ type SelectResult<TChannels extends Record<string, ReadChannel<any>>> = {
  */
 export function select<TChannels extends { [key: string | symbol]: ReadChannel<any> }>(
   o: TChannels,
-): Promise<SelectResult<TChannels>> {
+): Promise<SelectResult<TChannels>>;
+
+/**
+ * Waits for the first {@link Channel} that is ready based on key.
+ * Returns with the key for matching.
+ * Prefers the passed {@link AbortSignal}, which if aborted, returns `undefined`.
+ *
+ * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
+ */
+export function select<TChannels extends { [key: string | symbol]: ReadChannel<any> }>(
+  o: TChannels,
+  signal: AbortSignal,
+): Promise<SelectResult<TChannels> | undefined>;
+
+export function select<TChannels extends { [key: string | symbol]: ReadChannel<any> }>(
+  o: TChannels,
+  signal?: AbortSignal,
+): Promise<SelectResult<TChannels> | undefined> {
+  if (signal?.aborted) {
+    return Promise.resolve().then(() => undefined);
+  }
+
   const sync = selectDefault(o);
   if (sync !== undefined) {
     // nb. load-bearing extra Promise.resolve()
     return Promise.resolve().then(() => sync);
   }
 
-  const e = Object.entries(o);
-  const options = e.map(([key, ch]) => ch.wait({ key, ch, m: undefined }));
+  const options: any[] = [];
+
+  let signalPromise: Promise<void> | undefined;
+  if (signal !== undefined) {
+    signalPromise = signalCache.get(signal);
+    if (signalPromise === undefined) {
+      signalPromise = new Promise((r) =>
+        signal.addEventListener('abort', () => r(), { once: true }),
+      );
+      signalCache.set(signal, signalPromise);
+    }
+    options.push(signalPromise);
+  }
+
+  Object.entries(o).forEach(([key, ch]) => {
+    options.push(ch.wait({ key, ch, m: undefined }));
+  });
   return (
     Promise.race(options)
       .then((choice) => {
-        choice.m = choice.ch.next();
-        return choice as any;
+        if (choice) {
+          choice.m = choice.ch.next();
+        }
+        return choice;
       })
       // nb. load-bearing
       .then((x) => x)

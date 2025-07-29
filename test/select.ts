@@ -143,3 +143,20 @@ test('gen', async () => {
     { done: true, value: 3 },
   ]);
 });
+
+test('signal', async () => {
+  const a = newChannel<string>();
+  const c = new AbortController();
+  c.abort();
+
+  const out = await select({ a }, c.signal);
+  switch (out?.key) {
+    case undefined:
+      break;
+    case 'a':
+      out.m satisfies string;
+    // shouldn't run, fall-through
+    default:
+      assert.fail('bad');
+  }
+});
