@@ -68,11 +68,14 @@ export type ReadChannel<T> = {
 
 type MessageType<Q> = Q extends ReadChannel<infer X> ? X : never;
 
-type SelectResult<TChannels extends Record<string, ReadChannel<any>>> = {
+export type SelectRequest = { [key: string | symbol]: ReadChannel<any> | undefined };
+
+export type SelectResult<TChannels extends SelectRequest> = {
   [TKey in keyof TChannels]: Readonly<{
     key: TKey;
     ch: TChannels[TKey];
     m: MessageType<TChannels[TKey]>;
+    closed: boolean;
   }>;
 }[keyof TChannels];
 
@@ -82,7 +85,7 @@ type SelectResult<TChannels extends Record<string, ReadChannel<any>>> = {
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function select<TChannels extends { [key: string | symbol]: ReadChannel<any> }>(
+export function select<TChannels extends SelectRequest>(
   o: TChannels,
 ): Promise<SelectResult<TChannels>>;
 
@@ -93,12 +96,12 @@ export function select<TChannels extends { [key: string | symbol]: ReadChannel<a
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function select<TChannels extends { [key: string | symbol]: ReadChannel<any> }>(
+export function select<TChannels extends SelectRequest>(
   o: TChannels,
   signal: AbortSignal,
 ): Promise<SelectResult<TChannels> | undefined>;
 
-export function select<TChannels extends { [key: string | symbol]: ReadChannel<any> }>(
+export function select<TChannels extends SelectRequest>(
   o: TChannels,
   signal?: AbortSignal,
 ): Promise<SelectResult<TChannels> | undefined> {
@@ -112,7 +115,8 @@ export function select<TChannels extends { [key: string | symbol]: ReadChannel<a
     return Promise.resolve().then(() => sync);
   }
 
-  const options: any[] = [];
+  // basically the key type of SelectResult
+  const options: Promise<void | { key: any; ch: ReadChannel<any>; m: any; closed: boolean }>[] = [];
 
   let signalPromise: Promise<void> | undefined;
   if (signal !== undefined) {
@@ -127,19 +131,21 @@ export function select<TChannels extends { [key: string | symbol]: ReadChannel<a
   }
 
   Object.entries(o).forEach(([key, ch]) => {
-    options.push(ch.wait({ key, ch, m: undefined }));
+    if (ch) {
+      options.push(ch.wait({ key, ch, m: undefined, closed: false }));
+    }
   });
-  return (
-    Promise.race(options)
-      .then((choice) => {
-        if (choice) {
-          choice.m = choice.ch.next();
-        }
-        return choice;
-      })
-      // nb. load-bearing
-      .then((x) => x)
-  );
+  const out = Promise.race(options)
+    .then((choice) => {
+      if (choice) {
+        choice.m = choice.ch.next();
+        choice.closed = choice.ch.closed;
+      }
+      return choice;
+    })
+    // nb. load-bearing
+    .then((x) => x);
+  return out as any;
 }
 
 /**
@@ -148,13 +154,13 @@ export function select<TChannels extends { [key: string | symbol]: ReadChannel<a
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function selectDefault<TChannels extends { [key: string | symbol]: ReadChannel<any> }>(
-  o: TChannels,
-): SelectResult<TChannels> | undefined {
+export function selectDefault<
+  TChannels extends { [key: string | symbol]: ReadChannel<any> | undefined },
+>(o: TChannels): SelectResult<TChannels> | undefined {
   for (const key of Reflect.ownKeys(o)) {
     const ch = o[key];
-    if (ch.pending()) {
-      return { key, ch: ch as any, m: ch.next() };
+    if (ch?.pending()) {
+      return { key, ch: ch as any, m: ch.next(), closed: ch.closed };
     }
   }
   return undefined;

@@ -1,6 +1,12 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { channelForGenerator, channelForSignal, newChannel, select } from '../src/select.ts';
+import {
+  channelForGenerator,
+  channelForSignal,
+  newChannel,
+  select,
+  selectDefault,
+} from '../src/select.ts';
 import { timeout } from '../src/promise.ts';
 
 test('select', async () => {
@@ -39,7 +45,7 @@ test('keyed', async () => {
     a,
     b,
   });
-  assert.deepStrictEqual(out, { key: 'a', ch: a, m: 'lol' });
+  assert.deepStrictEqual(out, { key: 'a', ch: a, m: 'lol', closed: false });
 
   Promise.resolve().then(() => b.push(123));
 
@@ -47,7 +53,7 @@ test('keyed', async () => {
     a,
     b,
   });
-  assert.deepStrictEqual(out2, { key: 'b', ch: b, m: 123 });
+  assert.deepStrictEqual(out2, { key: 'b', ch: b, m: 123, closed: false });
 });
 
 test('consume', async () => {
@@ -77,7 +83,7 @@ test('close', async () => {
   const abortSymbol = Symbol('abort');
 
   const out = await select({ [abortSymbol]: ch });
-  assert.deepStrictEqual(out, { key: abortSymbol, ch, m: 1 });
+  assert.deepStrictEqual(out, { key: abortSymbol, ch, m: 1, closed: true });
 
   switch (out.key) {
     case abortSymbol:
@@ -159,4 +165,16 @@ test('signal', async () => {
     default:
       assert.fail('bad');
   }
+});
+
+test('select undefined', async () => {
+  const b = newChannel<string>();
+
+  b.push('hi');
+
+  const choices = { a: undefined, b };
+  const out = selectDefault(choices);
+
+  assert.strictEqual(out?.m, 'hi');
+  assert.strictEqual(out?.closed, false);
 });
