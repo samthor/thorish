@@ -168,13 +168,27 @@ test('signal', async () => {
 });
 
 test('select undefined', async () => {
+  const a = newChannel<string>();
   const b = newChannel<string>();
+
+  let cond = true;
 
   b.push('hi');
 
-  const choices = { a: undefined, b };
+  const choices = { a: cond ? a : undefined, b };
   const out = selectDefault(choices);
 
-  assert.strictEqual(out?.m, 'hi');
-  assert.strictEqual(out?.closed, false);
+  switch (out?.key) {
+    case 'a':
+      // nb. checks that out.ch is defined by type; "a" can't be selected if it's undefined
+      assert.fail(`should never happen: ${out.ch.closed}`);
+
+    case 'b':
+      assert.strictEqual(out?.m, 'hi');
+      assert.strictEqual(out?.closed, false);
+      break;
+
+    default:
+      assert.fail('unknown branch');
+  }
 });

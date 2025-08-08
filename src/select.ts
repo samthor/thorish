@@ -73,7 +73,7 @@ export type SelectRequest = { [key: string | symbol]: ReadChannel<any> | undefin
 export type SelectResult<TChannels extends SelectRequest> = {
   [TKey in keyof TChannels]: Readonly<{
     key: TKey;
-    ch: TChannels[TKey];
+    ch: NonNullable<TChannels[TKey]>;
     m: MessageType<TChannels[TKey]>;
     closed: boolean;
   }>;
