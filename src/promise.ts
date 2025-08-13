@@ -25,8 +25,22 @@ export function wrapTrigger<TCallbackParam = void, TArgs extends any[] = []>(
 
 /**
  * Sets a timeout via {@link Promise}.
+ *
+ * Pass an optional {@link AbortSignal} to resolve early with success on abort.
  */
-export const timeout = (duration: number) => wrapTrigger(setTimeout, duration);
+export function timeout(ms: number, signal?: AbortSignal) {
+  if (signal?.aborted) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(t);
+      resolve();
+    });
+  });
+}
 
 /**
  * Wraps {@link Promise.withResolvers} with a polyfill.

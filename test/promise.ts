@@ -8,6 +8,21 @@ test('setTimeout', async () => {
   assert.ok(true);
 });
 
+test('timeout', async () => {
+  const start = performance.now();
+  const c = new AbortController();
+
+  const tp = promise.timeout(500, c.signal);
+  await promise.timeout(10);
+  c.abort();
+  await tp;
+
+  const duration = performance.now() - start;
+  if (duration > 100) {
+    assert.fail('should abort early');
+  }
+});
+
 test('spliceNextPromise', async () => {
   const unresolvedPromise = Promise.race([]);
   const arr = [

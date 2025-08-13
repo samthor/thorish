@@ -27,6 +27,11 @@ export function isArrayEqualIsh(val1: unknown, val2: unknown) {
  * Slow in browser.
  */
 export function base64UrlToBytes(s: string): Uint8Array {
+  if ('fromBase64' in Uint8Array) {
+    // @ts-ignore
+    return Uint8Array.fromBase64(s, { alphabet: 'base64url' });
+  }
+
   const sb = atob(s.replaceAll('-', '+').replaceAll('_', '/'));
 
   const out = new Uint8Array(sb.length);
@@ -51,7 +56,7 @@ export function base64UrlToString(s: string) {
  *
  * Slow in browser.
  */
-export function toBase64Url(s: string | Uint8Array) {
+export function toBase64Url(s: string | Uint8Array): string {
   if (typeof s === 'string') {
     s = new TextEncoder().encode(s);
   }
