@@ -17,7 +17,9 @@ test('select', async () => {
 
   const task = async () => {
     const out = await select({ ch1: ch1 });
-    results.push(out.m);
+    if (out.m) {
+      results.push(out.m);
+    }
   };
 
   const p1 = task();
@@ -160,7 +162,7 @@ test('signal', async () => {
     case undefined:
       break;
     case 'a':
-      out.m satisfies string;
+      out.m satisfies string | undefined;
     // shouldn't run, fall-through
     default:
       assert.fail('bad');

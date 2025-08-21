@@ -2,6 +2,10 @@ import { promiseWithResolvers } from './promise.ts';
 
 const signalCache = new WeakMap<AbortSignal, Promise<void>>();
 
+type Fallback<T, F> = T extends undefined ? F : T;
+
+type Writeable<T> = { -readonly [P in keyof T]: T[P] };
+
 /**
  * Channel is borrowed from Go.
  *
@@ -32,7 +36,8 @@ export type Channel<T> = {
    *
    * This is as {@link ReadChannel.wait}, but with a wider type.
    */
-  wait<V = Channel<T>>(value?: V): Promise<V>;
+  wait<V = Channel<T>>(): Promise<Fallback<V, Channel<T>>>;
+  wait<V = Channel<T>>(value: V): Promise<Fallback<V, Channel<T>>>;
 } & ReadChannel<T>;
 
 export type ReadChannel<T> = {
@@ -52,7 +57,8 @@ export type ReadChannel<T> = {
    * For no other reason than convenience, this resolves with itself.
    * This isn't the value itself, the assumption is you can then synchronously consume the next value with {@link Channel#next}.
    */
-  wait<V = ReadChannel<T>>(value?: V): Promise<V>;
+  wait<V = ReadChannel<T>>(): Promise<Fallback<V, ReadChannel<T>>>;
+  wait<V = ReadChannel<T>>(value: V): Promise<Fallback<V, ReadChannel<T>>>;
 
   /**
    * Returns whether {@link Channel#next} has an available value.
@@ -68,16 +74,16 @@ export type ReadChannel<T> = {
 
 type MessageType<Q> = Q extends ReadChannel<infer X> ? X : never;
 
-export type SelectRequest = { [key: string | symbol]: ReadChannel<any> | undefined };
+type SelectType<Q> = Q extends SelectRequest<infer X> ? X : never;
 
-export type SelectResult<TChannels extends SelectRequest> = {
-  [TKey in keyof TChannels]: Readonly<{
-    key: TKey;
-    ch: NonNullable<TChannels[TKey]>;
-    m: MessageType<TChannels[TKey]>;
-    closed: boolean;
-  }>;
-}[keyof TChannels];
+export type SelectRequest<T> = { [key: string | symbol]: ReadChannel<T> };
+
+export type SelectResult<T> = Readonly<{
+  key: string | symbol;
+  ch: ReadChannel<T>;
+  m: MessageType<ReadChannel<T>> | undefined;
+  closed: boolean;
+}>;
 
 /**
  * Waits for the first {@link Channel} that is ready based on key.
@@ -85,9 +91,9 @@ export type SelectResult<TChannels extends SelectRequest> = {
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function select<TChannels extends SelectRequest>(
-  o: TChannels,
-): Promise<SelectResult<TChannels>>;
+export function select<T extends SelectRequest<V>, V = SelectType<T>>(
+  o: T,
+): Promise<SelectResult<V>>;
 
 /**
  * Waits for the first {@link Channel} that is ready based on key.
@@ -96,15 +102,15 @@ export function select<TChannels extends SelectRequest>(
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function select<TChannels extends SelectRequest>(
-  o: TChannels,
+export function select<T extends SelectRequest<V>, V = SelectType<T>>(
+  o: T,
   signal: AbortSignal,
-): Promise<SelectResult<TChannels> | undefined>;
+): Promise<SelectResult<V> | undefined>;
 
-export function select<TChannels extends SelectRequest>(
-  o: TChannels,
+export function select<T extends SelectRequest<V>, V = SelectType<T>>(
+  o: T,
   signal?: AbortSignal,
-): Promise<SelectResult<TChannels> | undefined> {
+): Promise<SelectResult<V> | undefined> {
   if (signal?.aborted) {
     return Promise.resolve().then(() => undefined);
   }
@@ -116,18 +122,17 @@ export function select<TChannels extends SelectRequest>(
   }
 
   // basically the key type of SelectResult
-  const options: Promise<void | { key: any; ch: ReadChannel<any>; m: any; closed: boolean }>[] = [];
+  const options: Promise<Writeable<SelectResult<V>> | undefined>[] = [];
 
-  let signalPromise: Promise<void> | undefined;
   if (signal !== undefined) {
-    signalPromise = signalCache.get(signal);
+    let signalPromise: Promise<void> | undefined = signalCache.get(signal);
     if (signalPromise === undefined) {
       signalPromise = new Promise((r) =>
         signal.addEventListener('abort', () => r(), { once: true }),
       );
       signalCache.set(signal, signalPromise);
     }
-    options.push(signalPromise);
+    options.push(signalPromise.then(() => undefined));
   }
 
   Object.entries(o).forEach(([key, ch]) => {
@@ -145,7 +150,7 @@ export function select<TChannels extends SelectRequest>(
     })
     // nb. load-bearing
     .then((x) => x);
-  return out as any;
+  return out;
 }
 
 /**
@@ -154,13 +159,11 @@ export function select<TChannels extends SelectRequest>(
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function selectDefault<
-  TChannels extends { [key: string | symbol]: ReadChannel<any> | undefined },
->(o: TChannels): SelectResult<TChannels> | undefined {
+export function selectDefault<T>(o: Partial<SelectRequest<T>>): SelectResult<T> | undefined {
   for (const key of Reflect.ownKeys(o)) {
     const ch = o[key];
     if (ch?.pending()) {
-      return { key, ch: ch as any, m: ch.next(), closed: ch.closed };
+      return { key, ch, m: ch.next(), closed: ch.closed };
     }
   }
   return undefined;
@@ -191,7 +194,7 @@ class ChannelImpl<T> implements Channel<T> {
   private tail: ChannelItem<T> | null = null;
 
   private readonly waits: {
-    promise: Promise<any>;
+    promise: Promise<unknown>;
     resolve: () => void;
   }[] = [];
 
@@ -216,10 +219,12 @@ class ChannelImpl<T> implements Channel<T> {
     });
   }
 
-  // awkward typing to allow automatic resolution with any other value
-  wait<V = Channel<T>>(value: V = this as any): Promise<V> {
-    const pr = promiseWithResolvers<V>();
-    this.waits.push({ promise: pr.promise, resolve: () => pr.resolve(value) });
+  wait<V = Channel<T>>(value?: V): Promise<Fallback<V, Channel<T>>> {
+    const pr = promiseWithResolvers<Fallback<V, Channel<T>>>();
+    this.waits.push({
+      promise: pr.promise,
+      resolve: () => pr.resolve((value ?? this) as Fallback<V, Channel<T>>),
+    });
 
     this.kickoffResolveTask();
 
@@ -284,11 +289,21 @@ class ChannelImpl<T> implements Channel<T> {
 /**
  * Converts a {@link AbortSignal} into a channel which is closed when it aborts.
  */
-export function channelForSignal<T = AbortSignal>(s: AbortSignal, v: T = s as any): ReadChannel<T> {
+export function channelForSignal<T = AbortSignal>(
+  s: AbortSignal,
+): ReadChannel<Fallback<T, AbortSignal>>;
+export function channelForSignal<T = AbortSignal>(
+  s: AbortSignal,
+  v: T,
+): ReadChannel<Fallback<T, AbortSignal>>;
+export function channelForSignal<T = AbortSignal>(
+  s: AbortSignal,
+  v?: T,
+): ReadChannel<Fallback<T, AbortSignal>> {
   const o = {
     closed: false,
 
-    async wait<V = ReadChannel<T>>(value: V = o as any): Promise<V> {
+    async wait<V = ReadChannel<T>>(value: V = o): Promise<V> {
       if (s.aborted) {
         return value;
       }
@@ -299,10 +314,10 @@ export function channelForSignal<T = AbortSignal>(s: AbortSignal, v: T = s as an
       return s.aborted;
     },
 
-    next(): T | undefined {
+    next(): Fallback<T, AbortSignal> | undefined {
       if (s.aborted) {
         o.closed = true;
-        return v;
+        return (v ?? s) as Fallback<T, AbortSignal>;
       }
       return undefined;
     },
