@@ -164,7 +164,7 @@ export function selectDefault<T extends SelectRequest>(o: T): SelectResult<T> | 
     if (ch?.pending()) {
       return {
         key,
-        ch: ch as any,
+        ch: ch as any, // TODO: TS is grumpy about a cast here; can't confirm T is the same subtype...
         m: ch.next(),
         closed: ch.closed,
       };
