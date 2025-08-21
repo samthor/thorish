@@ -74,16 +74,16 @@ export type ReadChannel<T> = {
 
 type MessageType<Q> = Q extends ReadChannel<infer X> ? X : never;
 
-type SelectType<Q> = Q extends SelectRequest<infer X> ? X : never;
+export type SelectRequest = { [key: string | symbol]: ReadChannel<any> | undefined };
 
-export type SelectRequest<T> = { [key: string | symbol]: ReadChannel<T> };
-
-export type SelectResult<T> = Readonly<{
-  key: string | symbol;
-  ch: ReadChannel<T>;
-  m: MessageType<ReadChannel<T>> | undefined;
-  closed: boolean;
-}>;
+export type SelectResult<TChannels extends SelectRequest> = {
+  [TKey in keyof TChannels]: Readonly<{
+    key: TKey;
+    ch: NonNullable<TChannels[TKey]>;
+    m: MessageType<TChannels[TKey]>;
+    closed: boolean;
+  }>;
+}[keyof TChannels];
 
 /**
  * Waits for the first {@link Channel} that is ready based on key.
@@ -91,9 +91,7 @@ export type SelectResult<T> = Readonly<{
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function select<T extends SelectRequest<V>, V = SelectType<T>>(
-  o: T,
-): Promise<SelectResult<V>>;
+export function select<T extends SelectRequest>(o: T): Promise<SelectResult<T>>;
 
 /**
  * Waits for the first {@link Channel} that is ready based on key.
@@ -102,15 +100,15 @@ export function select<T extends SelectRequest<V>, V = SelectType<T>>(
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function select<T extends SelectRequest<V>, V = SelectType<T>>(
+export function select<T extends SelectRequest>(
   o: T,
   signal: AbortSignal,
-): Promise<SelectResult<V> | undefined>;
+): Promise<SelectResult<T> | undefined>;
 
-export function select<T extends SelectRequest<V>, V = SelectType<T>>(
+export function select<T extends SelectRequest>(
   o: T,
   signal?: AbortSignal,
-): Promise<SelectResult<V> | undefined> {
+): Promise<SelectResult<T> | undefined> {
   if (signal?.aborted) {
     return Promise.resolve().then(() => undefined);
   }
@@ -122,7 +120,7 @@ export function select<T extends SelectRequest<V>, V = SelectType<T>>(
   }
 
   // basically the key type of SelectResult
-  const options: Promise<Writeable<SelectResult<V>> | undefined>[] = [];
+  const options: Promise<Writeable<SelectResult<any>> | undefined>[] = [];
 
   if (signal !== undefined) {
     let signalPromise: Promise<void> | undefined = signalCache.get(signal);
@@ -148,8 +146,9 @@ export function select<T extends SelectRequest<V>, V = SelectType<T>>(
       }
       return choice;
     })
-    // nb. load-bearing
-    .then((x) => x);
+    // nb. .then is load-bearing (and cast is helpful)
+    .then((x) => x as SelectResult<T>);
+
   return out;
 }
 
@@ -159,11 +158,16 @@ export function select<T extends SelectRequest<V>, V = SelectType<T>>(
  *
  * This uses JS' default object ordering: integers >= 0 in order, all others, symbols.
  */
-export function selectDefault<T>(o: Partial<SelectRequest<T>>): SelectResult<T> | undefined {
+export function selectDefault<T extends SelectRequest>(o: T): SelectResult<T> | undefined {
   for (const key of Reflect.ownKeys(o)) {
     const ch = o[key];
     if (ch?.pending()) {
-      return { key, ch, m: ch.next(), closed: ch.closed };
+      return {
+        key,
+        ch: ch as any,
+        m: ch.next(),
+        closed: ch.closed,
+      };
     }
   }
   return undefined;
