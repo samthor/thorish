@@ -16,10 +16,9 @@ test('select', async () => {
   ch1.push('abc');
 
   const task = async () => {
-    const out = await select({ ch1: ch1 });
-    if (out.m) {
-      results.push(out.m);
-    }
+    const out = await select({ ch1 });
+    out.m satisfies string; // must satisfy string, we only gave it one channel
+    results.push(out.m);
   };
 
   const p1 = task();
@@ -154,16 +153,20 @@ test('gen', async () => {
 
 test('signal', async () => {
   const a = newChannel<string>();
+  const b = newChannel<number>();
   const c = new AbortController();
   c.abort();
 
-  const out = await select({ a }, c.signal);
+  const out = await select({ a, b }, c.signal);
   switch (out?.key) {
     case undefined:
       break;
+    case 'b':
+      out.m satisfies number;
+      throw 'XXX should not run';
     case 'a':
-      out.m satisfies string | undefined;
-    // shouldn't run, fall-through
+      out.m satisfies string;
+      throw 'XXX should not run';
     default:
       assert.fail('bad');
   }
