@@ -259,3 +259,16 @@ test('rand', () => {
     });
   }
 });
+
+test('clone', () => {
+  const r = new Rope(0, '');
+
+  r.insertAfter(r.zeroId(), 123, 123, 'hello');
+  r.insertAfter(r.zeroId(), 456, 123, 'there');
+
+  const r2 = r.clone();
+  r2.insertAfter(456, 1, 1, 'butts');
+
+  assert.strictEqual([...r.iter()].length, 2);
+  assert.strictEqual([...r2.iter()].length, 3);
+});
