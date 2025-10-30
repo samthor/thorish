@@ -56,8 +56,12 @@ export class Rope<K, T> {
   private head: NodeType<K, T>;
   private tail: NodeType<K, T>;
 
-  private readonly zeroId: K;
+  private readonly _zeroId: K;
   private byId = new Map<K, NodeType<K, T>>();
+
+  zeroId(): K {
+    return this._zeroId;
+  }
 
   // We use these as the results of `rseek` and `rseekNodes`.
   // Otherwise we keep recreating pointless arrays.
@@ -70,10 +74,10 @@ export class Rope<K, T> {
    * Clones this {@link Rope} using {@link structuredClone}.
    */
   clone(): Rope<K, T> {
-    const r = new Rope<K, T>(this.zeroId, this.head.data);
+    const r = new Rope<K, T>(this._zeroId, this.head.data);
 
     r.byId = structuredClone(this.byId);
-    r.head = r.byId.get(this.zeroId)!;
+    r.head = r.byId.get(this._zeroId)!;
     r.tail = r.byId.get(this.tail.id)!;
     this._length = r._length;
 
@@ -98,7 +102,7 @@ export class Rope<K, T> {
     });
     this.byId.set(zeroId, this.head);
     this._length = 0;
-    this.zeroId = zeroId;
+    this._zeroId = zeroId;
 
     this.tail = this.head;
   }
@@ -195,7 +199,7 @@ export class Rope<K, T> {
     console.info('<');
   }
 
-  *[Symbol.iterator]() {
+  *[Symbol.iterator](): Iterator<T, void, void> {
     // Skip the head, since it has no string.
     let e = this.head.levels[0].next;
 
@@ -243,7 +247,7 @@ export class Rope<K, T> {
       length: out.length,
       id: ropeId,
       prevId: ol.prev.id,
-      nextId: ol.next?.id ?? this.zeroId,
+      nextId: ol.next?.id ?? this._zeroId,
     };
   }
 
@@ -258,7 +262,7 @@ export class Rope<K, T> {
    */
   byPosition(position: number, biasAfter: boolean = false): { id: K; offset: number } {
     if (position < 0 || (!biasAfter && position === 0)) {
-      return { id: this.zeroId, offset: 0 };
+      return { id: this._zeroId, offset: 0 };
     } else if (position > this._length || (biasAfter && position == this._length)) {
       return { id: this.tail.id, offset: 0 };
     }
@@ -492,6 +496,10 @@ export class Rope<K, T> {
       throw new Error(`missing id=${afterId}`);
     }
 
+    if (afterId === untilId) {
+      return [];
+    }
+
     this.rseekNodes(startNode);
     const nodes = this._nodesBuffer;
     let out: T[] = [];
@@ -609,7 +617,14 @@ export class Rope<K, T> {
     }
   }
 
-  *iter(afterId: K): Iterable<{ id: K; data: T }> {
+  *iter(
+    afterId: K = this.zeroId(),
+    untilId?: K,
+  ): Iterable<{ id: K; data: T; length: number }, void, void> {
+    if (afterId === untilId) {
+      return;
+    }
+
     let curr = this.byId.get(afterId);
     if (curr === undefined) {
       return;
@@ -621,8 +636,12 @@ export class Rope<K, T> {
         return;
       }
 
-      yield next;
+      yield { id: next.id, data: next.data, length: next.length };
       curr = next;
+
+      if (curr.id === untilId) {
+        return;
+      }
     }
   }
 
