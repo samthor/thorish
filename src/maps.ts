@@ -2,7 +2,7 @@
  * A set which allows the same value to be added many times.
  */
 export class CountSet<T> {
-  private m = new Map<T, number>();
+  private readonly m = new Map<T, number>();
   private count = 0;
 
   /**
@@ -59,7 +59,7 @@ export class CountSet<T> {
  * `.add(b, a)`).
  */
 export class PairSet<K> {
-  private m = new PairMap<K, boolean>();
+  private readonly m = new PairMap<K, boolean>();
 
   size(): number {
     return this.m.size();
@@ -96,13 +96,17 @@ export class PairSet<K> {
   pairs(): IterableIterator<[K, K]> {
     return this.m.pairs();
   }
+
+  clear() {
+    this.m.clear();
+  }
 }
 
 /**
  * A map with a pair of keys. Both sides are added at once.
  */
 export class PairMap<K, V> {
-  private m = new Map<K, Map<K, V>>();
+  private readonly m = new Map<K, Map<K, V>>();
 
   private implicitGet(k: K) {
     const has = this.m.get(k);
@@ -206,13 +210,17 @@ export class PairMap<K, V> {
   keys(): IterableIterator<K> {
     return this.m.keys();
   }
+
+  clear() {
+    this.m.clear();
+  }
 }
 
 /**
  * A map which itself contains a set of items. Each key may have multiple items set.
  */
 export class MultiMap<K, V> {
-  private m = new Map<K, Set<V>>();
+  private readonly m = new Map<K, Set<V>>();
   private _totalSize = 0;
 
   add(k: K, v: V): boolean {
@@ -297,12 +305,16 @@ export class MultiMap<K, V> {
   keys(): Iterable<K> {
     return this.m.keys();
   }
+
+  clear() {
+    this.m.clear();
+  }
 }
 
 export class TransformMap<K, V, T = V> {
-  private data = new Map<K, V>();
-  private defaultValue: V;
-  private transform: (value: V, withValue: T) => V;
+  private readonly data = new Map<K, V>();
+  private readonly defaultValue: V;
+  private readonly transform: (value: V, withValue: T) => V;
 
   constructor(defaultValue: V, transform: (value: V, withValue: T) => V) {
     this.defaultValue = defaultValue;
@@ -353,5 +365,9 @@ export class TransformMap<K, V, T = V> {
    */
   has(k: K): boolean {
     return this.data.has(k);
+  }
+
+  clear() {
+    this.data.clear();
   }
 }

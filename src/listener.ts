@@ -23,7 +23,7 @@ export type NamedListeners<T extends Record<string, any>> = {
   any<K extends keyof T>(name: K, handler: (signal: AbortSignal) => void, signal?: AbortSignal);
 
   /**
-   * Synchronous check to see if anyone is listening to the give event.
+   * Synchronous check to see if anyone is listening to the given event.
    */
   hasAny<K extends keyof T>(name: K): boolean;
 

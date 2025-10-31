@@ -197,3 +197,39 @@ test('select undefined', async () => {
       assert.fail('unknown branch');
   }
 });
+
+test('select check', async () => {
+  let pendingInit = false;
+
+  const fromServer = newChannel<boolean>();
+  const toServer = newChannel<number>();
+
+  fromServer.push(true);
+
+  // this was grumpy with better type changes - TS got confused by the possible undefined channel
+  // but this is a hugely important part of select() otherwise writing this out is terrible
+  const next = await select({
+    fromServer,
+    toServer: pendingInit ? undefined : toServer,
+  });
+
+  assert.strictEqual(next.key, 'fromServer');
+  assert.strictEqual(next.m, true);
+});
+
+test('select all undefined', async () => {
+  const ch = newChannel<boolean>();
+  let bool = false;
+
+  try {
+    await select({});
+    assert.fail('should throw, no valid channels');
+  } catch {}
+
+  try {
+    await select({
+      blah: bool ? ch : undefined,
+    });
+    assert.fail('should throw, no valid channels');
+  } catch {}
+});
