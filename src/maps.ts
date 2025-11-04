@@ -311,6 +311,93 @@ export class MultiMap<K, V> {
   }
 }
 
+export class BiMap<A, B> {
+  private constructor(
+    private readonly fwd: Map<A, B> = new Map(),
+    private readonly rwd: Map<B, A> = new Map(),
+  ) {}
+
+  clear() {
+    this.fwd.clear();
+    this.rwd.clear();
+  }
+
+  keys() {
+    return this.fwd.keys();
+  }
+
+  values() {
+    return this.fwd.values();
+  }
+
+  entries() {
+    return this.fwd.entries();
+  }
+
+  invert() {
+    return new BiMap(this.rwd, this.fwd);
+  }
+
+  set(a: A, b: B) {
+    const prevB = this.fwd.get(a);
+    const prevA = this.rwd.get(b);
+
+    // this keeps ordering
+
+    if (prevB !== b) {
+      this.rwd.delete(prevB as B);
+    }
+    this.rwd.set(b, a);
+
+    if (prevA !== a) {
+      this.fwd.delete(prevA as A);
+    }
+    this.fwd.set(a, b);
+
+    return this;
+  }
+
+  has(a: A) {
+    return this.fwd.has(a);
+  }
+
+  hasFar(b: B) {
+    return this.rwd.has(b);
+  }
+
+  get(a: A) {
+    return this.fwd.get(a);
+  }
+
+  getFar(b: B) {
+    return this.rwd.get(b);
+  }
+
+  delete(a: A) {
+    if (!this.fwd.has(a)) {
+      return false;
+    }
+    const prevB = this.fwd.get(a);
+    this.rwd.delete(prevB as B);
+    this.fwd.delete(a);
+    return true;
+  }
+
+  deleteFar(b: B) {
+    if (!this.rwd.has(b)) {
+      return false;
+    }
+    const prevA = this.rwd.get(b);
+    this.fwd.delete(prevA as A);
+    this.rwd.delete(b);
+    return true;
+  }
+
+  static create<A, B>() {
+    return new BiMap<A, B>();
+  }
+}
+
 export class TransformMap<K, V, T = V> {
   private readonly data = new Map<K, V>();
   private readonly defaultValue: V;

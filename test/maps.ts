@@ -1,6 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
 import * as maps from '../src/maps.js';
+import { BiMap } from '../src/maps.js';
 
 test('CountSet', () => {
   const c = new maps.CountSet<string>();
@@ -23,6 +24,16 @@ test('CountSet', () => {
   assert.strictEqual(c.delete('hello'), false);
 });
 
+test('bimap', () => {
+  const x = BiMap.create<number, string>();
+
+  x.set(1, 'foo');
+  assert.strictEqual(x.getFar('foo'), 1);
+
+  x.set(1, 'bar');
+  assert.strictEqual(x.hasFar('foo'), false);
+});
+
 test('pair', () => {
   const c = new maps.PairSet<string>();
 
@@ -38,18 +49,19 @@ test('pair', () => {
   assert.strictEqual(c.hasAny('b'), true);
   assert.deepStrictEqual([...c.otherKeys('b')], ['a', 'c']);
 
-  assert.deepStrictEqual([...c.pairs()], [
-    ['a', 'b'],
-    ['b', 'c'],
-  ]);
+  assert.deepStrictEqual(
+    [...c.pairs()],
+    [
+      ['a', 'b'],
+      ['b', 'c'],
+    ],
+  );
 
   assert.strictEqual(c.delete('b', 'a'), true);
   assert.strictEqual(c.delete('b', 'a'), false);
   assert.deepStrictEqual([...c.otherKeys('b')], ['c']);
 
-  assert.deepStrictEqual([...c.pairs()], [
-    ['b', 'c'],
-  ]);
+  assert.deepStrictEqual([...c.pairs()], [['b', 'c']]);
 });
 
 test('multimap', () => {
