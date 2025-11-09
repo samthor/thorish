@@ -60,15 +60,15 @@ test('adjust', () => {
     const thereId = insertAtHelper(r, 5, 'there');
     insertAtHelper(r, 10, 'sam');
 
-    assert.deepStrictEqual(r.read(0), {
-      out: ['', 'hello', 'there', 'sam'],
-      len: [0, 5, 5, 3],
+    assert.deepStrictEqual(r.read(), {
+      out: ['hello', 'there', 'sam'],
+      len: [5, 5, 3],
     });
 
     r.adjust(thereId, '!', 1);
-    assert.deepStrictEqual(r.read(0), {
-      out: ['', 'hello', '!', 'sam'],
-      len: [0, 5, 1, 3],
+    assert.deepStrictEqual(r.read(), {
+      out: ['hello', '!', 'sam'],
+      len: [5, 1, 3],
     });
 
     assert.deepStrictEqual(r.byPosition(5, true), {
@@ -90,7 +90,7 @@ test('seek', () => {
   //  assert.ok(r.before(helloId, lastId), 'hello should be before last');
 
   const helloLookup = r.lookup(helloId);
-  assert.ok(r.deleteTo(helloLookup.prevId!, lastId));
+  r.deleteTo(helloLookup.prevId!, lastId);
 
   // assert.throws(() => {
   //   // lastId was deleted
@@ -98,7 +98,9 @@ test('seek', () => {
   // });
   const newHelloId = insertAtHelper(r, r.find(xxId), 'hellO');
 
-  assert.deepStrictEqual(r.read(xId, newHelloId), {
+  const lookupX = r.lookup(xId);
+
+  assert.deepStrictEqual(r.read(lookupX.prevId, newHelloId), {
     out: ['x', 'early: ', 'xx', 'hellO'],
     len: [1, 7, 2, 5],
   });
@@ -127,7 +129,7 @@ test('rope', () => {
     // check move
     assert.deepStrictEqual(r.find(questionId), 9);
 
-    assert.ok(r.deleteById(bangsId));
+    r.deleteById(bangsId);
     assert.strictEqual(ropeToString(r), 'hello??');
 
     // assert.deepStrictEqual(r.read(4, 6), {
@@ -158,7 +160,7 @@ test('rope', () => {
     const deleteAfterId = r.byPosition('what up hello'.length, false);
     const endDeleteId = r.byPosition('what up hello[9][8][7]'.length, false);
 
-    assert.ok(r.deleteTo(deleteAfterId.id, endDeleteId.id));
+    r.deleteTo(deleteAfterId.id, endDeleteId.id);
     assert.strictEqual(r.length(), ropeToString(r).length);
 
     assert.deepStrictEqual(r.byPosition('what up hello[6][5][4][3][2][1][0]'.length, true), {
@@ -226,7 +228,7 @@ test('rand', () => {
         // delete case
         const index = randomRangeInt(nodes.length - 1) + 1; // can't delete zero
         const choice = arraySwapRemoveAt(nodes, index)!;
-        assert.ok(r.deleteById(choice));
+        r.deleteById(choice);
       }
     }
 
@@ -267,8 +269,15 @@ test('clone', () => {
   r.insertAfter(r.zeroId(), 456, 123, 'there');
 
   const r2 = r.clone();
+  assert.strictEqual(r.length(), r2.length());
   r2.insertAfter(456, 1, 1, 'butts');
+  assert.notStrictEqual(r.length(), r2.length());
 
   assert.strictEqual([...r.iter()].length, 2);
   assert.strictEqual([...r2.iter()].length, 3);
+});
+
+test('void', () => {
+  const r = new Rope(0);
+  r.insertAfter(0, 10, 100); // allows omitting last entry
 });

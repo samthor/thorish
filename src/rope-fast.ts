@@ -2,14 +2,12 @@
  * @fileoverview Derived from @josephg's implementation here: https://github.com/josephg/jumprope
  *
  * MIT license etc etc
- *
- * Version that doesn't break reactivity.
  */
 
 /**
- * Returns a value with 50% chance of 1, 25% chance of 2, 12.5% chance of 3, ...
+ * Returns a value [1,31] inclusive, with 50% chance of 1, 25% chance of 2, 12.5% chance of 3, ...
  */
-const randomHeight = () => {
+export const randomHeight = () => {
   let length = 1;
   let r = Math.random() * 2;
   while (r > 1) {
@@ -19,37 +17,24 @@ const randomHeight = () => {
   return length;
 };
 
-type LevelType<K> = {
-  next: NodeType<K> | null;
-  prev: NodeType<K>;
+type LevelType<K, T> = {
+  next: NodeType<K, T> | null;
+  prev: NodeType<K, T>;
   subtreesize: number;
 };
 
-type NodeType<K> = {
+type NodeType<K, T> = {
+  data: T;
   id: K;
   length: number;
-  levels: LevelType<K>[];
+  levels: LevelType<K, T>[];
 };
 
 export type RopeLookup<K, T> = {
   data: T;
   length: number;
-
-  /**
-   * The ID of this lookup.
-   * This will be the same as what was passed in to perform the lookup.
-   */
   id: K;
-
-  /**
-   * The previous ID in sequence.
-   */
   prevId: K;
-
-  /**
-   * The next ID in sequence.
-   * This will be the zero ID if there is no following data.
-   */
   nextId: K;
 };
 
@@ -58,45 +43,39 @@ export type RopeRead<T> = {
   len: number[];
 };
 
+let globalNodesBuffer: NodeType<any, any>[] = [];
+
 /**
- * Implements a skip list with `O(logn)-ish` performance.
+ * Actually an 'immutable rope'.
  *
- * We store data here, but mostly only as a convenience: it's a simple k/v map.
- * The length is far more important.
- *
- * Individual parts can have zero length.
+ * Parts cannot be modified, because they are objects with length that have some kind of rendering that this class won't understand.
  */
-export class Rope<K, T = void> {
+export class Rope<K, T> {
   private _length: number;
-  private head: NodeType<K>;
-  private tail: NodeType<K>;
+  private head: NodeType<K, T>;
+  private tail: NodeType<K, T>;
 
   private readonly _zeroId: K;
-  private readonly byId = new Map<K, NodeType<K>>();
-  private readonly dataById = new Map<K, T>();
+  private byId = new Map<K, NodeType<K, T>>();
 
-  private readonly nodeCache: NodeType<K>[] = [];
-
-  /**
-   * The zero ID that this {@link Rope} was created with.
-   */
   zeroId(): K {
     return this._zeroId;
   }
+
+  // // We use these as the results of `rseek` and `rseekNodes`.
+  // // Otherwise we keep recreating pointless arrays.
+  // private readonly _nodesBuffer: NodeType<K, T>[] = [];
+  // private readonly _subBuffer: number[] = [];
+
+  // private readonly _nodesPool: NodeType<K, T>[] = [];
 
   /**
    * Clones this {@link Rope} using {@link structuredClone}.
    */
   clone(): Rope<K, T> {
-    const r = new Rope<K, T>(this._zeroId);
+    const r = new Rope<K, T>(this._zeroId, this.head.data);
 
-    // @ts-expect-error
-    r.dataById = new Map(this.dataById);
-
-    const byId = structuredClone(this.byId); // safe because we don't reference data
-    // @ts-expect-error
-    r.byId = byId;
-
+    r.byId = structuredClone(this.byId);
     r.head = r.byId.get(this._zeroId)!;
     r.tail = r.byId.get(this.tail.id)!;
     r._length = this._length;
@@ -108,13 +87,9 @@ export class Rope<K, T = void> {
     return r;
   }
 
-  /**
-   * Constructs a new {@link Rope}.
-   *
-   * The second argument may be passed purely as a TypeScript hint for {@link T} and it is stored on the root node, but it is not required and cannot ever be read.
-   */
-  constructor(zeroId: K, sampleData?: T) {
+  constructor(zeroId: K, root: T) {
     this.head = {
+      data: root,
       id: zeroId,
       length: 0,
       levels: [],
@@ -131,23 +106,14 @@ export class Rope<K, T = void> {
     this.tail = this.head;
   }
 
-  /**
-   * The total length of all items in this {@link Rope}.
-   */
   length() {
     return this._length;
   }
 
-  /**
-   * The ID of the right-most entry here.
-   */
   last(): K {
     return this.tail.id;
   }
 
-  /**
-   * The count of items in this {@link Rope}, even zero-length ones.
-   */
   count() {
     return this.byId.size - 1;
   }
@@ -157,7 +123,7 @@ export class Rope<K, T = void> {
    *
    * This isn't a substitute for {@link compare} as zero length entries are allowed, so this won't return which one is first.
    *
-   * Currently just calls {@link find} twice, so `O(logn)-ish`.
+   * Currently just calls {@link find} twice.
    */
   lengthBetween(low: K, high: K): number {
     // TODO: This could be faster by using the tricks in `compare`.
@@ -179,12 +145,11 @@ export class Rope<K, T = void> {
       nulls[i] = false;
     }
 
-    let curr: NodeType<K> | null = this.head;
-    let last: NodeType<K> | null = null;
+    let curr: NodeType<K, T> | null = this.head;
+    let last: NodeType<K, T> | null = null;
 
     for (;;) {
-      const data = this.dataById.get(curr.id);
-      const leftRaw = JSON.stringify(data);
+      const leftRaw = JSON.stringify(curr.data);
       const left = `(id=${String(curr.id).padEnd(3, ' ')}) ` + leftRaw.substring(0, 60);
 
       const parts: string[] = curr.levels.map(({ next, subtreesize }, i) => {
@@ -224,8 +189,7 @@ export class Rope<K, T = void> {
     // render last to start via prevs links
     const prevs: string[] = [];
     while (last !== this.head) {
-      const data = this.dataById.get(last.id);
-      prevs.push(JSON.stringify(data));
+      prevs.push(JSON.stringify(last.data));
       last = last.levels.at(-1)!.prev;
     }
     console.info('prevs:', prevs.join(' -> '));
@@ -235,11 +199,11 @@ export class Rope<K, T = void> {
   }
 
   *[Symbol.iterator](): Iterator<T, void, void> {
-    // Skip the head, since it has no content.
+    // Skip the head, since it has no string.
     let e = this.head.levels[0].next;
 
     while (e) {
-      yield this.dataById.get(e.id)!;
+      yield e.data;
       e = e.levels[0].next;
     }
   }
@@ -266,27 +230,11 @@ export class Rope<K, T = void> {
     return pos + e.length;
   }
 
-  /**
-   * Does this ID exist here.
-   *
-   * Perf: `O(1)-ish` (just {@link Map}).
-   */
   has(ropeId: K): boolean {
     return this.byId.has(ropeId);
   }
 
-  /**
-   * Lookup information on this ID.
-   *
-   * This throws when trying to look up the zero ID.
-   *
-   * Perf: `O(1)-ish` (just {@link Map}).
-   */
   lookup(ropeId: K): RopeLookup<K, T> {
-    if (ropeId === this._zeroId) {
-      throw new Error(`cannot lookup root ID`);
-    }
-
     const out = this.byId.get(ropeId);
     if (out === undefined) {
       throw new Error(`could not lookup id=${ropeId}`);
@@ -294,7 +242,7 @@ export class Rope<K, T = void> {
     const ol = out.levels[0]!;
 
     return {
-      data: this.dataById.get(ropeId)!,
+      data: out.data,
       length: out.length,
       id: ropeId,
       prevId: ol.prev.id,
@@ -310,8 +258,6 @@ export class Rope<K, T = void> {
    * For example, looking up `offset=0` in an already-used rope will always yield `id=0`, as it has zero length.
    *
    * Specify the `biasEnd` parameter to flip this behavior.
-   *
-   * Perf: `O(logn)-ish`.
    */
   byPosition(position: number, biasAfter: boolean = false): { id: K; offset: number } {
     if (position < 0 || (!biasAfter && position === 0)) {
@@ -345,18 +291,19 @@ export class Rope<K, T = void> {
 
   /**
    * Reduced version of `rseek` for various purposes...
+   *
+   * Result placed in `_nodesBuffer`.
    */
-  private rseekNodes(e: NodeType<K>): NodeType<K>[] {
+  private rseekNodes(e: NodeType<K, T>): void {
     const height = this.head.levels.length;
     let i = 0;
 
-    const out = new Array(e.levels.length).fill(null);
     for (;;) {
       while (i < e.levels.length) {
-        out[i] = e;
+        globalNodesBuffer[i] = e;
         ++i;
         if (i === height) {
-          return out;
+          return;
         }
       }
       e = e.levels[i - 1].prev;
@@ -375,26 +322,23 @@ export class Rope<K, T = void> {
     }
     const lengthDelta = length - e.length;
 
-    const nodes = this.rseekNodes(e);
+    this.rseekNodes(e);
 
+    e.data = data;
     e.length = length;
 
     if (lengthDelta !== 0) {
       const height = this.head.levels.length;
       for (let i = 0; i < height; ++i) {
         // TODO: this matches before but seems wrong
-        nodes[i].levels[i].subtreesize += lengthDelta;
+        globalNodesBuffer[i].levels[i].subtreesize += lengthDelta;
       }
       this._length += lengthDelta;
     }
-
-    this.dataById.set(id, data);
   }
 
   /**
    * Inserts a node after a previous node.
-   *
-   * Perf: `O(logn)-ish`.
    */
   insertAfter(afterId: K, newId: K, length: number, data: T) {
     const e = this.byId.get(afterId);
@@ -404,20 +348,19 @@ export class Rope<K, T = void> {
       throw new Error(`must be +ve length`);
     }
 
-    this.dataById.set(newId, data);
-
     const head = this.head;
     const headLevels = head.levels.length;
 
     // -- create new node
 
     let height;
-    let newE: NodeType<K> | undefined = this.nodeCache.pop();
+    let newE: NodeType<K, T> | undefined; // TODO: remove pool for danger of reactive refs
 
-    let levels: LevelType<K>[];
+    let levels: LevelType<K, T>[];
 
     if (newE !== undefined) {
       // use from the pool (levels is already randomly distributed!)
+      newE.data = data;
       newE.id = newId;
       newE.length = length;
       levels = newE.levels;
@@ -436,6 +379,7 @@ export class Rope<K, T = void> {
       }
 
       newE = {
+        data,
         id: newId,
         length,
         levels,
@@ -445,7 +389,7 @@ export class Rope<K, T = void> {
 
     // -- rseek to find out where it goes
 
-    const nodes = new Array(headLevels).fill(null);
+    const nodes = globalNodesBuffer;
     const sub: number[] = [];
 
     let seekNode = e;
@@ -529,17 +473,13 @@ export class Rope<K, T = void> {
 
   /**
    * Deletes the given ID from this rope.
-   *
-   * Perf: `O(logn)-ish`.
    */
   deleteById(id: K) {
-    if (id === this._zeroId) {
-      throw new Error(`cannot delete root ID`);
-    }
-
     const actual = this.byId.get(id);
     if (!actual) {
       throw new Error(`missing id=${id}`);
+    } else if (actual.levels[0].prev === actual) {
+      throw new Error(`cannot delete id=0`);
     }
     const prev = actual.levels[0].prev;
 
@@ -548,20 +488,20 @@ export class Rope<K, T = void> {
 
   /**
    * Deletes after the given ID until the target ID.
-   *
-   * Perf: `O(logn)-ish`.
    */
-  deleteTo(afterId: K, untilId: K): void {
+  deleteTo(afterId: K, untilId: K): T[] {
     const startNode = this.byId.get(afterId);
     if (startNode === undefined) {
       throw new Error(`missing id=${afterId}`);
     }
 
     if (afterId === untilId) {
-      return;
+      return [];
     }
 
-    const nodes = this.rseekNodes(startNode);
+    this.rseekNodes(startNode);
+    const nodes = globalNodesBuffer;
+    let out: T[] = [];
 
     for (;;) {
       const e = nodes[0].levels[0].next;
@@ -570,6 +510,7 @@ export class Rope<K, T = void> {
       }
       this.byId.delete(e.id);
       this._length -= e.length;
+      out.push(e.data);
 
       for (let i = 0; i < nodes.length; ++i) {
         const node = nodes[i];
@@ -592,43 +533,22 @@ export class Rope<K, T = void> {
         }
       }
 
-      this.insertIntoPool(e);
-
       if (e.id === untilId) {
         break;
       }
     }
-  }
 
-  private insertIntoPool(e: NodeType<K>) {
-    if (this.nodeCache.length > 32) {
-      return;
-    }
-    // sanitize stored node (don't hold old stuff)
-    e.levels.forEach((v) => {
-      v.next = null;
-      v.prev = this.head;
-    });
-    this.nodeCache.push(e);
+    return out;
   }
 
   /**
    * Is the ID in `a` before the ID in `b`?
-   *
-   * Perf: `O(logn)-ish`.
    */
   before(a: K, b: K) {
     const c = this.compare(a, b);
     return c < 0;
   }
 
-  /**
-   * Compares the position of these two IDs.
-   *
-   * Returns -1 if A is before B, zero if they are the same, and +1 if A is after B.
-   *
-   * Perf: `O(logn)-ish`.
-   */
   compare(a: K, b: K): number {
     let anode = this.byId.get(a);
     if (anode === undefined) {
@@ -651,7 +571,8 @@ export class Rope<K, T = void> {
       [anode, bnode] = [bnode, anode];
     }
 
-    const anodes = this.rseekNodes(anode);
+    this.rseekNodes(anode);
+    const anodes = globalNodesBuffer;
 
     // walk up the tree
     let curr = bnode;
@@ -678,13 +599,8 @@ export class Rope<K, T = void> {
     }
   }
 
-  /**
-   * Iterate from after the given ID, to the target ID inclusive (i.e., `(afterId,untilId]`).
-   *
-   * If no `untilId` is passed or the IDs are in the wrong order, iterates from after `afterId` until the end of this {@link Rope.}.
-   */
   *iter(
-    afterId: K = this._zeroId,
+    afterId: K = this.zeroId(),
     untilId?: K,
   ): Iterable<{ id: K; data: T; length: number }, void, void> {
     if (afterId === untilId) {
@@ -697,12 +613,12 @@ export class Rope<K, T = void> {
     }
 
     for (;;) {
-      const next: NodeType<K> | null = curr!.levels[0].next;
+      const next: NodeType<K, T> | null = curr!.levels[0].next;
       if (next === null) {
         return;
       }
 
-      yield { id: next.id, data: this.dataById.get(next.id)!, length: next.length };
+      yield { id: next.id, data: next.data, length: next.length };
       curr = next;
 
       if (curr.id === untilId) {
@@ -711,20 +627,38 @@ export class Rope<K, T = void> {
     }
   }
 
-  /**
-   * Reads all data from after the given ID, to the target ID inclusive.
-   *
-   * This is a convenience over {@link iter} and has the same semantics.
-   */
-  read(afterId: K = this._zeroId, untilId?: K): RopeRead<T> {
-    const it = this.iter(afterId, untilId);
+  read(from: K, to?: K): RopeRead<T> | undefined {
+    const left = this.byId.get(from);
+    if (!left) {
+      return;
+    }
+
+    let right: NodeType<K, T> | undefined;
+    if (to !== undefined) {
+      right = this.byId.get(to);
+      if (!right || this.before(to, from)) {
+        return;
+      }
+    }
 
     const out: T[] = [];
     const len: number[] = [];
 
-    for (const next of it) {
-      out.push(next.data);
-      len.push(next.length);
+    let curr: NodeType<K, T> = left;
+    for (;;) {
+      out.push(curr.data);
+      len.push(curr.length);
+
+      if (curr === right) {
+        break;
+      }
+
+      const next = curr.levels[0].next;
+      if (!next) {
+        break;
+      }
+
+      curr = next;
     }
 
     return { out, len };
