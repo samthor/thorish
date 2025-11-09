@@ -8,6 +8,7 @@ import './effect.js';
 import './generator.js';
 import './html-state.js';
 import './intermediate.js';
+import './notify.ts';
 import './maps.js';
 import './matcher.js';
 import './memoize.js';
