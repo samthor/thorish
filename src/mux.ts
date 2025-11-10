@@ -4,10 +4,6 @@ import { buildLinkQueue } from './queue.ts';
 
 export type CallToken = Object;
 
-export const startTask = Symbol('muxStart');
-export const messageTask = Symbol('muxMessage');
-export const stopTask = Symbol('muxStop');
-
 export type MuxTask<Out> = { token: CallToken } & ({ signal: AbortSignal } | { data: Out });
 
 type InternalMuxTask<In, Out> =
