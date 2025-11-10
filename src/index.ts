@@ -15,7 +15,7 @@ export * from './listener.ts';
 export * from './maps.js';
 export * from './matcher.js';
 export * from './memoize.js';
-export * from './multiplex.ts';
+export * from './mux.ts';
 export * from './notify.ts';
 export * from './object-utils.js';
 export * from './primitives.js';

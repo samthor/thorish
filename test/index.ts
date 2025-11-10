@@ -12,6 +12,7 @@ import './notify.ts';
 import './maps.js';
 import './matcher.js';
 import './memoize.js';
+import './mux.ts';
 import './object-utils.js';
 import './primitives.js';
 import './promise.js';

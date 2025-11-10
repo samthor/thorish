@@ -44,7 +44,7 @@ export type NamedListeners<T extends Record<string, any>> = {
 export type SoloListener<V> = {
   addListener(listener: (data: V) => void, signal: AbortSignal): void;
   dispatch(data: V): boolean;
-  any(handler: (signal: AbortSignal) => void, signal: AbortSignal);
+  any(handler: (signal: AbortSignal) => void, signal?: AbortSignal);
   hasAny(): boolean;
 };
 
