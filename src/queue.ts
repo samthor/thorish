@@ -1,5 +1,5 @@
-import { promiseWithResolvers } from './promise.js';
-import { promiseVoidForSignal } from './signal.js';
+import { promiseWithResolvers } from './promise.ts';
+import { promiseVoidForSignal } from './signal.ts';
 
 export class WorkQueue<T> {
   private pending: T[] = [];

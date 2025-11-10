@@ -1,4 +1,4 @@
-import { unresolvedPromise } from './promise.js';
+import { unresolvedPromise } from './promise.ts';
 
 /**
  * Returns a {@link Promise} that rejects with {@link symbolAbortSignal} when aborted.

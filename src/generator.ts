@@ -1,7 +1,7 @@
-import { promiseWithResolvers, unresolvedPromise } from './promise.js';
-import { AbortSignalArgs } from './types.js';
-import type { WorkQueue } from './queue.js';
-import { promiseForSignal, symbolAbortSignal } from './internal.js';
+import { promiseWithResolvers, unresolvedPromise } from './promise.ts';
+import type { AbortSignalArgs } from './types.ts';
+import type { WorkQueue } from './queue.ts';
+import { promiseForSignal, symbolAbortSignal } from './internal.ts';
 
 /**
  * Combines the N passed async generators into a single generator which yields items in order,
@@ -208,4 +208,24 @@ export class AsyncGeneratorCache<T, Y> {
   knownValues(): Readonly<T[]> {
     return this._knownValues;
   }
+}
+
+/**
+ * Helper which iterates over a {@link AsyncGenerator}.
+ *
+ * Allows relatively easy access to the return value.
+ */
+export async function forEachAsync<T, TReturn, TNext>(
+  async: AsyncGenerator<T, TReturn, TNext>,
+  cb: (x: T) => Promise<TNext> | TNext,
+): Promise<TReturn> {
+  let result: IteratorResult<T, TReturn>;
+  let next: [TNext] | [] = [];
+
+  while (!(result = await async.next(...next)).done) {
+    const internalResult = await cb(result.value);
+    next = [internalResult];
+  }
+
+  return result.value;
 }

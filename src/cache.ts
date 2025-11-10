@@ -68,3 +68,19 @@ export function once<T = void>(fn: () => T) {
     return result;
   };
 }
+
+/**
+ * Lazy {@link WeakMap} factory.
+ */
+export function lazyWeak<W extends Object, V>(fn: (w: W) => V): (w: W) => V {
+  const wm = new WeakMap<W, V>();
+
+  return (w: W): V => {
+    let value = wm.get(w);
+    if (value === undefined) {
+      value = fn(w);
+      wm.set(w, value);
+    }
+    return value;
+  };
+}
