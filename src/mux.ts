@@ -16,10 +16,10 @@ export interface MuxSession<In, Out> {
   signal: AbortSignal;
 
   /**
-   * Are there any active calls as part of this {@link MuxSession}?
-   * The runner should probably not return if this is the case.
+   * Should this session be kept alive?
+   * This might be useful to check during setup or if {@link nextTask} returns nothing.
    */
-  hasActive(): boolean;
+  keepAlive(): boolean;
 
   /**
    * Synchronously return the next task.
@@ -53,15 +53,20 @@ class MuxSessionImpl<In, Out> implements MuxSession<In, Out> {
 
   readonly active = new Map<CallToken, (x: SimpleResponse<In>) => void>();
 
-  constructor(private readonly tasks: InternalMuxTask<In, Out>[]) {}
+  constructor(private readonly tasks: Set<InternalMuxTask<In, Out>>) {}
 
-  hasActive(): boolean {
-    return this.active.size !== 0;
+  keepAlive(): boolean {
+    return this.active.size !== 0 || this.tasks.size !== 0;
   }
 
   nextTask(): MuxTask<Out> | undefined {
-    const t = this.tasks.shift();
-    if (!t) {
+    let t: InternalMuxTask<In, Out> | undefined;
+    for (const x of this.tasks) {
+      t = x;
+      this.tasks.delete(x);
+      break;
+    }
+    if (t === undefined) {
       return;
     }
 
@@ -81,7 +86,7 @@ class MuxSessionImpl<In, Out> implements MuxSession<In, Out> {
   }
 
   async waitForTask(): Promise<true> {
-    while (!this.tasks.length) {
+    while (!this.tasks.size) {
       await objectWait(this.tasks);
     }
     return true;
@@ -122,12 +127,12 @@ export type MuxCall<In, Out> = {
  */
 export function buildMux<In, Out>(runner: MuxFn<In, Out>): MuxCall<In, Out> {
   let activeRunner: Promise<any> | undefined;
-  const tasks: InternalMuxTask<In, Out>[] = [];
+  const tasks = new Set<InternalMuxTask<In, Out>>();
 
   const listener = soloListener<Error>();
 
   const maybeStartRunner = () => {
-    if (!tasks.length || activeRunner !== undefined) {
+    if (!tasks.size || activeRunner !== undefined) {
       return;
     }
 
@@ -177,12 +182,20 @@ export function buildMux<In, Out>(runner: MuxFn<In, Out>): MuxCall<In, Out> {
 
     // something object-like
     const token: CallToken = new Object();
-    tasks.push({ token, signal, respond: queue.push.bind(queue) });
+    const setupTask = { token, signal, respond: queue.push.bind(queue) };
+    tasks.add(setupTask);
     objectNotifyAll(tasks);
+
+    signal.addEventListener('abort', () => {
+      if (tasks.delete(setupTask)) {
+        objectNotifyAll(tasks);
+      }
+    });
 
     const send = (out: Out) => {
       if (!signal.aborted) {
-        tasks.push({ token, data: out });
+        tasks.add({ token, data: out });
+        objectNotifyAll(tasks);
       }
     };
 
