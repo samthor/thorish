@@ -11,6 +11,7 @@ export * from './expirable.js';
 export * from './generator.js';
 export * from './html-state.js';
 export * from './intermediate.js';
+export * from './limit.ts';
 export * from './listener.ts';
 export * from './maps.js';
 export * from './matcher.js';
