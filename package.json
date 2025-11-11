@@ -1,5 +1,5 @@
 {
-  "version": "1.1.77",
+  "version": "1.1.78",
   "devDependencies": {
     "@types/node": "^22.13.10",
     "@types/ws": "^8.5.13",

@@ -60,6 +60,10 @@ export function buildMuxTrain<T, P>(arg: MuxTrainArg<T, P>): MuxCall<P> {
 
     const run = async () => {
       const status = await arg.build(groupSignal);
+      const done = status.done.then(() => {
+        // if the train gives 'normal' shutdown, still throw so we retry
+        throw new Error(`shutdown`);
+      });
       backoff.success();
 
       while (!groupSignal.aborted) {
@@ -69,7 +73,7 @@ export function buildMuxTrain<T, P>(arg: MuxTrainArg<T, P>): MuxCall<P> {
         pending.clear();
 
         const w = objectWait(pending, groupSignal);
-        await Promise.race([w, status.done]);
+        await Promise.race([w, done]);
       }
     };
 
