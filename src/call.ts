@@ -3,7 +3,7 @@ import { buildLinkQueue } from './queue.ts';
 import { derivedSignal, promiseForSignal } from './signal.ts';
 import { socketConnect } from './socket.ts';
 
-const startSymbol = Symbol('start') as any;
+const startSymbol = /* @__PURE__ */ Symbol('start') as any;
 
 export type ActiveCall<In, Out> = {
   gen: AsyncGenerator<In, Error | void, void>;
