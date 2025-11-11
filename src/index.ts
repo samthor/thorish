@@ -4,7 +4,7 @@ export * from './bound-proxy.js';
 export * from './cache.js';
 export * from './cgroup.ts';
 export * from './cond.js';
-export * from './conn.js';
+export * from './call.js';
 export * from './counter.js';
 export * from './effect.js';
 export * from './expirable.js';

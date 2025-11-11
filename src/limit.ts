@@ -67,3 +67,66 @@ export function buildLimiter(c?: LimitConfig): Limiter {
     }
   };
 }
+
+const PERSISTENT_DELAY_EXP = 1.65;
+const PERSISTENT_DELAY_BASE = 230;
+const PERSISTENT_DELAY_MAX = 60_000;
+const PERSISTENT_DELAY_RAND = 0.1;
+
+export interface Backoff {
+  readonly delay: number;
+
+  /**
+   * Delays by this long.
+   * Abandons (but does not throw) if the signal aborts.
+   */
+  timeout(signal?: AbortSignal): Promise<void>;
+
+  /**
+   * Indicate that we've been successful.
+   * Resets the delay.
+   */
+  success(): void;
+
+  /**
+   * Indicate that an error has occured here.
+   * Increases the delay.
+   */
+  error(): void;
+}
+
+/**
+ * Creates a simple backoff helper.
+ */
+export function createBackoff(baseDelay?: number): Backoff {
+  baseDelay ||= 0;
+  let extraDelay = 0;
+  let nextDelay = 0;
+
+  return {
+    get delay() {
+      return nextDelay;
+    },
+    async timeout(signal) {
+      if (signal?.aborted) {
+        return;
+      }
+      return new Promise((r) => {
+        setTimeout(r, nextDelay);
+        signal?.addEventListener('abort', () => r(), { once: true });
+      });
+    },
+    success() {
+      extraDelay = 0;
+      nextDelay = 0;
+    },
+    error() {
+      extraDelay = (extraDelay + PERSISTENT_DELAY_BASE) * PERSISTENT_DELAY_EXP;
+      extraDelay = Math.min(extraDelay, PERSISTENT_DELAY_MAX);
+
+      const factor = 1.0 - (Math.random() * PERSISTENT_DELAY_RAND * 2 - PERSISTENT_DELAY_RAND);
+      const delay = (baseDelay + extraDelay) * factor;
+      nextDelay = Math.max(0, delay);
+    },
+  };
+}
