@@ -184,7 +184,10 @@ export class Rope<K, T = void> {
 
     for (;;) {
       const data = this.dataById.get(curr.id);
-      const leftRaw = JSON.stringify(data);
+      let leftRaw = JSON.stringify(data);
+      if (typeof leftRaw !== 'string') {
+        leftRaw = '';
+      }
       const left = `(id=${String(curr.id).padEnd(3, ' ')}) ` + leftRaw.substring(0, 60);
 
       const parts: string[] = curr.levels.map(({ next, subtreesize }, i) => {

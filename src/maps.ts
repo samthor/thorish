@@ -317,6 +317,10 @@ export class BiMap<A, B> {
     private readonly rwd: Map<B, A> = new Map(),
   ) {}
 
+  get size() {
+    return this.fwd.size;
+  }
+
   clear() {
     this.fwd.clear();
     this.rwd.clear();
