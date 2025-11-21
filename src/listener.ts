@@ -52,7 +52,7 @@ type InternalListener = {
   listeners: Set<(data: any) => void>;
   any: Set<(signal: AbortSignal) => void>;
   activeSignal: AbortSignal;
-  abort: () => void;
+  abort: (reason: any) => void;
 };
 
 /**
@@ -91,14 +91,14 @@ export function namedListeners<T extends Record<string, any>>(): NamedListeners<
       } else if (state.listeners.size === 0) {
         const c = new AbortController();
         state.activeSignal = c.signal;
-        state.abort = () => c.abort();
+        state.abort = (reason: any) => c.abort(reason);
         state.any.forEach((l) => l(state.activeSignal));
       }
 
       signal.addEventListener('abort', () => {
         state.listeners.delete(listener);
         if (state.listeners.size === 0) {
-          state.abort();
+          state.abort(`no more listeners for: ${String(name)}`);
         }
       });
       state.listeners.add(listener);
@@ -193,14 +193,14 @@ function buildForRef(
     fn = callback;
   }
 
-  let abort: () => void;
+  let abort: (reason: any) => void;
 
   if (once) {
     const c = new AbortController();
 
     const originalFn = fn;
     fn = (e) => {
-      c.abort();
+      c.abort('once');
       originalFn(e);
     };
 
@@ -229,8 +229,13 @@ function namedListenersToEventTarget<T extends Record<string, any>>(
     buildEvent?: <K extends keyof T>(type: K, arg: T[K]) => Event | undefined;
   },
 ): EventTarget {
-  const addedByRef = new Map<string, Map<any, () => void>>();
-  const addByRef = (type: string, ref: any, signal: AbortSignal, abort: () => void): boolean => {
+  const addedByRef = new Map<string, Map<any, (reason: any) => void>>();
+  const addByRef = (
+    type: string,
+    ref: any,
+    signal: AbortSignal,
+    abort: (reason: any) => void,
+  ): boolean => {
     if (signal.aborted) {
       return false;
     }
@@ -290,7 +295,7 @@ function namedListenersToEventTarget<T extends Record<string, any>>(
         return;
       }
       const prev = addedByRef.get(type)?.get(callback);
-      prev?.();
+      prev?.('removed');
     },
   };
 }

@@ -154,7 +154,7 @@ export function derivedSignal(...raw: (AbortSignal | undefined)[]): {
   previous.push(c.signal);
 
   const signal = abortSignalAny(previous);
-  const abort = (reason?: any) => c.abort(reason);
+  const abort = (reason?: any) => c.abort(reason ?? 'aborted');
 
   return { signal, abort };
 }

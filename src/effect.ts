@@ -28,17 +28,17 @@ export function prepareEffectTrigger<X extends Record<string | symbol, any>>(): 
     const requiredSet = new Set<K>(required ?? []);
     const have = new Set<string | symbol>();
 
-    let abort = () => {};
+    let abort = (reason: any) => {};
 
     const o: Record<string | symbol, any> = {};
     const maybeTrigger = () => {
-      abort();
+      abort('trigger');
       if (have.size !== requiredSet.size) {
         return;
       }
 
       const c = new AbortController();
-      abort = () => c.abort();
+      abort = (reason) => c.abort(reason);
       cb(c.signal, { ...o });
     };
 

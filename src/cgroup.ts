@@ -39,7 +39,7 @@ export class CGroup {
 
       // Don't run microtask if we can abort immediately (no halt tasks).
       if (this.halts.length === 0) {
-        this.controller.abort();
+        this.controller.abort(signal.reason);
         return;
       }
 
@@ -58,7 +58,7 @@ export class CGroup {
 
         --haltActive;
         if (haltActive === 0 && this.resumeController?.signal === resumeSignal) {
-          this.controller!.abort();
+          this.controller!.abort('CGroup halt');
         }
       };
 
@@ -67,7 +67,7 @@ export class CGroup {
 
     // If a shutdown was in progress, adding a new signal cancels it.
     if (this.controller && this.resumeController) {
-      this.resumeController.abort();
+      this.resumeController.abort('resume aborted');
       this.resumeController = undefined;
       this.resumeStart = undefined;
     }
@@ -83,7 +83,7 @@ export class CGroup {
     if (!this.controller) {
       this.controller = new AbortController();
       if (this.active === 0) {
-        this.controller.abort();
+        this.controller.abort('no AbortSignal added to CGroup');
       } else {
         this.tasks.forEach((fn) => this.runTask(fn));
         this.tasks = []; // Clear tasks after starting

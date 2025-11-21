@@ -252,17 +252,17 @@ export class MatcherGroup<K, T> implements Group {
     this.matcher = matcher;
     this.signal = options?.signal;
 
-    let abortCurrentSubscription = () => {};
+    let abortCurrentSubscription = (reason: any) => {};
 
     // if this is fired, abort the current sub and clear listeners
-    this.signal?.addEventListener('abort', () => abortCurrentSubscription());
+    this.signal?.addEventListener('abort', () => abortCurrentSubscription(this.signal!.reason));
 
     const outer = this;
     this.cond = new (class extends Condition<boolean> {
       setup() {
         const c = new AbortController();
         c.signal.addEventListener('abort', () => outer.matchingSet.clear());
-        abortCurrentSubscription = () => c.abort();
+        abortCurrentSubscription = (reason: any) => c.abort(reason);
 
         if (outer.matchingSet.size) {
           throw new Error(`should not have anything in set on setup: ${outer.matchingSet}`);
@@ -284,7 +284,7 @@ export class MatcherGroup<K, T> implements Group {
       }
 
       teardown() {
-        abortCurrentSubscription();
+        abortCurrentSubscription('teardown');
       }
     })(false, options);
   }

@@ -110,7 +110,7 @@ export function buildShadowOptions(
  * Call the protected method {@link SignalHTMLElement#invalidate} to trigger a refresh manually (e.g., some important value has changed).
  */
 export abstract class SignalHTMLElement extends HTMLElement {
-  private abort = () => {};
+  private abort = (reason: any) => {};
   private signal: AbortSignal = abortedSignal;
 
   connectedCallback() {
@@ -121,7 +121,7 @@ export abstract class SignalHTMLElement extends HTMLElement {
     if (this.isConnected && !this.reparentShouldInvalidate()) {
       // we're about to have connectedCallback() fired, don't abort
     } else {
-      this.abort();
+      this.abort('disconnected');
     }
   }
 
@@ -129,7 +129,7 @@ export abstract class SignalHTMLElement extends HTMLElement {
    * Call to cause a refresh, e.g., some value has changed.
    */
   protected invalidate() {
-    this.abort();
+    this.abort('invalidate');
     this.maybeRefresh();
   }
 
@@ -147,7 +147,7 @@ export abstract class SignalHTMLElement extends HTMLElement {
 
     const c = new AbortController();
     this.signal = c.signal;
-    this.abort = () => c.abort();
+    this.abort = (reason) => c.abort(reason);
 
     this.refresh(this.signal);
   }

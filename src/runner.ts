@@ -93,7 +93,7 @@ export function buildAggregateRunner<T>(runner: AggregateRunnerTask<T>): Aggrega
           await runner(groupSignal, nextTask);
         } finally {
           // reset when runner stops/crashes
-          c.abort();
+          c.abort('runner stop');
           groupSignal = abortedSignal;
         }
       })();
