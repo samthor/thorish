@@ -65,6 +65,9 @@ export async function startRemoteCall<Init = never>(
     );
     sock.addEventListener('close', reject);
     signal.addEventListener('abort', reject);
+    if (signal.aborted) {
+      reject();
+    }
   });
   sock.send(JSON.stringify({ p: '1' })); // protocol v=1
   const hello = await helloPromise;
@@ -147,6 +150,9 @@ export async function startRemoteCall<Init = never>(
   sock.addEventListener('error', (e) => internalController.abort(e));
   internalController.signal.addEventListener('abort', () => sock.close());
 
+  const done = promiseForSignal(internalController.signal);
+  done.then(() => {}); // don't have to consume this
+
   return {
     call<In, Out>(signal: AbortSignal) {
       if (signal.aborted) {
@@ -189,7 +195,7 @@ export async function startRemoteCall<Init = never>(
       return { send, gen };
     },
     init: hello.i,
-    done: promiseForSignal(internalController.signal),
+    done,
   };
 }
 
