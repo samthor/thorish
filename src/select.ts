@@ -79,8 +79,16 @@ export type SelectResult<TChannels extends SelectRequest> = {
   }>;
 }[keyof TChannels];
 
+export type ReadyResult<TChannels extends SelectRequest> = {
+  [TKey in keyof TChannels]: Readonly<{
+    key: TKey;
+    ch: NonNullable<TChannels[TKey]>;
+    closed: boolean;
+  }>;
+}[keyof TChannels];
+
 /**
- * Waits for the first {@link Channel} that is ready based on key.
+ * Waits for the first {@link Channel} that is ready based on key, reading that channel.
  * Returns with the key for matching.
  *
  * For safety, throws if no valid channels are passed (zero channels or all `undefined`).
@@ -92,7 +100,7 @@ export function select<TChannels extends SelectRequest>(
 ): Promise<SelectResult<TChannels>>;
 
 /**
- * Waits for the first {@link Channel} that is ready based on key.
+ * Waits for the first {@link Channel} that is ready based on key, reading that channel.
  * Returns with the key for matching.
  * Prefers the passed {@link AbortSignal}, which if aborted, returns `undefined`.
  *
@@ -161,7 +169,7 @@ export function select<TChannels extends SelectRequest>(
 }
 
 /**
- * Selects the first {@link ReadChannel} that is ready, or `undefined` if none are ready.
+ * Selects the first {@link ReadChannel} that is ready, reading that channel, or `undefined` if none are ready.
  * Returns with the key for matching.
  *
  * This uses JS' default object ordering for what is "first" when many are ready: integers >= 0 in order, all others, symbols.
@@ -169,10 +177,25 @@ export function select<TChannels extends SelectRequest>(
 export function selectDefault<
   TChannels extends { [key: string | symbol]: ReadChannel<any> | undefined },
 >(o: TChannels): SelectResult<TChannels> | undefined {
+  const rr = readyDefault(o);
+  if (rr !== undefined) {
+    return { ...rr, m: rr.ch.next(), closed: rr.ch.closed };
+  }
+}
+
+/**
+ * Selects the first {@link ReadChannel} that is ready, or `undefined` if none are ready.
+ * Returns with the key for matching.
+ *
+ * This uses JS' default object ordering for what is "first" when many are ready: integers >= 0 in order, all others, symbols.
+ */
+export function readyDefault<
+  TChannels extends { [key: string | symbol]: ReadChannel<any> | undefined },
+>(o: TChannels): ReadyResult<TChannels> | undefined {
   for (const key of Reflect.ownKeys(o)) {
     const ch = o[key];
     if (ch?.pending()) {
-      return { key, ch: ch as any, m: ch.next(), closed: ch.closed };
+      return { key, ch: ch as any, closed: ch.closed };
     }
   }
   return undefined;
