@@ -1,6 +1,6 @@
-import { promiseForSignal, symbolAbortSignal } from './internal.js';
-import { timeout } from './promise.js';
-import { WorkQueue } from './queue.js';
+import { promiseForSignal, symbolAbortSignal } from './internal.ts';
+import { timeout } from './promise.ts';
+import { WorkQueue } from './queue.ts';
 
 export type TaskType<T> = {
   /**

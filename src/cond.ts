@@ -1,4 +1,4 @@
-import type { AbortSignalArgs } from './types.js';
+import type { AbortSignalArgs } from './types.ts';
 
 /**
  * The options passed to {@link Condition} when adding a listener.

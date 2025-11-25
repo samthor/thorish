@@ -1,4 +1,4 @@
-import { TransformMap } from './maps.js';
+import { TransformMap } from './maps.ts';
 
 /**
  * Helper to create implicit counts of things.

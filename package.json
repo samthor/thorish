@@ -10,7 +10,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "tsx test/",
+    "test": "node --disable-warning=ExperimentalWarning --experimental-transform-types --test test.ts",
     "build:dist-node": "esbuild entrypoint.ts --format=esm --platform=node --outfile=dist/node.esm.js --bundle --sourcemap",
     "build:dist-browser": "esbuild entrypoint.ts src/dom/index.ts --splitting --format=esm --platform=browser --outdir=dist/browser --bundle --sourcemap",
     "build:types": "tsc -p tsconfig.types.json",

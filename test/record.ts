@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { filterRecord, mapRecord, mapRecordAsync } from '../src/record.js';
+import { filterRecord, mapRecord, mapRecordAsync } from '../src/record.ts';
 
 test('filter creates new object', () => {
   const input = { abc: 1, def: 2 };

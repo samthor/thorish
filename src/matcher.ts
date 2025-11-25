@@ -1,15 +1,15 @@
-import { Condition, ConditionListener, ConditionOptions } from './cond.js';
-import { structuredIshClone } from './support/index.js';
+import { Condition, type ConditionListener, type ConditionOptions } from './cond.ts';
+import { structuredIshClone } from './support/index.ts';
 import {
-  DeepObjectPartial,
+  type DeepObjectPartial,
   readMatchAny,
   matchPartial,
   intersectManyObjects,
   deepFreeze,
-} from './object-utils.js';
-import { isArrayEqualIsh } from './support/index.js';
-import type { AbortSignalArgs } from './types.js';
-export { matchAny } from './object-utils.js';
+} from './object-utils.ts';
+import { isArrayEqualIsh } from './support/index.ts';
+import type { AbortSignalArgs } from './types.ts';
+export { matchAny } from './object-utils.ts';
 
 /**
  * Used to express a filter for {@link Matcher}.

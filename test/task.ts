@@ -1,7 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { runner, workTask } from '../src/task.js';
-import { promiseWithResolvers, timeout } from '../src/promise.js';
+import { runner, workTask } from '../src/task.ts';
+import { promiseWithResolvers, timeout } from '../src/promise.ts';
 
 test('task', async () => {
   const c = new AbortController();

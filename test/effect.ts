@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { prepareEffectTrigger } from '../src/effect.js';
+import { prepareEffectTrigger } from '../src/effect.ts';
 
 test('effect', () => {
   const invocations: { a?: number; b?: number }[] = [];

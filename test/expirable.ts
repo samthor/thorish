@@ -1,7 +1,6 @@
-
 import test from 'node:test';
 import * as assert from 'node:assert';
-import * as expirable from '../src/expirable.js';
+import * as expirable from '../src/expirable.ts';
 
 test('buildExpirable', () => {
   let count = 0;
@@ -16,14 +15,14 @@ test('buildExpirable', () => {
 
   const expirableGetter = expirable.buildExpirable(getter);
   const { result } = expirableGetter();
-  c.abort();
+  c.abort('whatever');
 
   const { result: result2 } = expirableGetter();
   const { result: result3 } = expirableGetter();
 
   assert.strictEqual(result, 1);
   assert.strictEqual(result2, 2);
-  assert.strictEqual(result3, 2);
+  assert.strictEqual(result3, 3, 'already aborted');
 });
 
 test('buildAsyncExpirable', async () => {
@@ -52,9 +51,9 @@ test('buildAsyncExpirable', async () => {
   urlString = 'after-abort';
   const c3 = await buildConnection();
 
-  assert.deepStrictEqual(c1, { urlString: 'hello' });
-  assert.deepStrictEqual(c2, { urlString: 'hello' });
-  assert.deepStrictEqual(c3, { urlString: 'after-abort' });
+  assert.deepStrictEqual(c1.result, { urlString: 'hello' });
+  assert.deepStrictEqual(c2.result, { urlString: 'hello' });
+  assert.deepStrictEqual(c3.result, { urlString: 'after-abort' });
 
   assert.strictEqual(c1, c2);
   assert.notStrictEqual(c2, c3);

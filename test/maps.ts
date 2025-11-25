@@ -1,7 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import * as maps from '../src/maps.js';
-import { BiMap } from '../src/maps.js';
+import * as maps from '../src/maps.ts';
+import { BiMap } from '../src/maps.ts';
 
 test('CountSet', () => {
   const c = new maps.CountSet<string>();

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import * as promise from '../src/promise.js';
+import * as promise from '../src/promise.ts';
 
 test('setTimeout', async () => {
   const t = promise.wrapTrigger(setTimeout, 10);

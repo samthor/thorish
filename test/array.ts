@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import * as array from '../src/array.js';
+import * as array from '../src/array.ts';
 
 test('findAllIndex', () => {
   const arr = [1, 2, 3, 4, 2];

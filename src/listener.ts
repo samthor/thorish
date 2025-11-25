@@ -126,7 +126,8 @@ export function namedListeners<T extends Record<string, any>>(): NamedListeners<
     },
 
     hasAny(name): boolean {
-      return listeners.has(name);
+      const e = listeners.get(name);
+      return e !== undefined && !e.activeSignal.aborted;
     },
 
     // @ts-expect-error TS is confused because it thinks we should use `...arg`

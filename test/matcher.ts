@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { Matcher, matchAny, MatcherGroup, CombineGroup } from '../src/matcher.js';
+import { Matcher, matchAny, MatcherGroup, CombineGroup } from '../src/matcher.ts';
 
 test('matcher match helpers', () => {
   const m = new Matcher<string, any>();
@@ -21,7 +21,7 @@ test('matcher match helpers', () => {
 });
 
 test('read', () => {
-  const m = new Matcher<string, { x: number, y: number, z: { a: number, b: number } }>();
+  const m = new Matcher<string, { x: number; y: number; z: { a: number; b: number } }>();
 
   assert.deepStrictEqual(m.read([]), undefined);
 
@@ -77,20 +77,22 @@ test('matcher sub any', () => {
   m.set('foo', { a: 1 });
 
   const calls: string[] = [];
-  m.sub({ a: matchAny }, {
-    add(k) {
-      calls.push('add:' + k);
+  m.sub(
+    { a: matchAny },
+    {
+      add(k) {
+        calls.push('add:' + k);
+      },
+      delete(k) {
+        calls.push('delete:' + k);
+      },
     },
-    delete(k) {
-      calls.push('delete:' + k);
-    },
-  });
+  );
   assert.deepStrictEqual(calls, ['add:foo']);
 
-//  m.delete('foo');
+  //  m.delete('foo');
   m.set('foo', { a: 2 });
   assert.deepStrictEqual(calls, ['add:foo', 'delete:foo', 'add:foo']);
-  
 });
 
 test('group', () => {
@@ -111,7 +113,7 @@ test('group', () => {
   assert.strictEqual(calls, 1);
 
   m.set('hello3-match', { x: 123 });
-  assert.strictEqual(calls, 1);  // still active
+  assert.strictEqual(calls, 1); // still active
   assert.deepStrictEqual([...mg.matching()], ['hello', 'hello3-match']);
 
   mg.removeListener(listener);

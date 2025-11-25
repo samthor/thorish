@@ -1,8 +1,12 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { combineAsyncGenerators, asyncGeneratorForHandler, asyncGeneratorQueue } from '../src/generator.js';
-import { WorkQueue } from '../src/queue.js';
-import { timeout, wrapTrigger } from '../src/promise.js';
+import {
+  combineAsyncGenerators,
+  asyncGeneratorForHandler,
+  asyncGeneratorQueue,
+} from '../src/generator.ts';
+import { WorkQueue } from '../src/queue.ts';
+import { timeout, wrapTrigger } from '../src/promise.ts';
 
 test('combineAsyncGenerators empty', async () => {
   const g = combineAsyncGenerators([]);
@@ -10,7 +14,7 @@ test('combineAsyncGenerators empty', async () => {
     assert.fail('should have no values');
   }
   const doneValue = await g.next();
-  assert.deepStrictEqual(doneValue, { done: true, value: undefined });  // won't show up outside loop
+  assert.deepStrictEqual(doneValue, { done: true, value: undefined }); // won't show up outside loop
 
   const g2 = combineAsyncGenerators([]);
   const next = await g2.next();
@@ -55,7 +59,7 @@ test('combineAsyncGenerators', async () => {
     if (out.value === 0) {
       break;
     }
-    results.push(((out.index + 1) * 100) + out.value);
+    results.push((out.index + 1) * 100 + out.value);
   }
 
   assert.deepStrictEqual(results, [201, 101, 202, 102]);

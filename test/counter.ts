@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { StatsCount } from '../src/counter.js';
+import { StatsCount } from '../src/counter.ts';
 
 test('counter', () => {
   const sc = new StatsCount();

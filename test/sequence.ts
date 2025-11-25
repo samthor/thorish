@@ -1,7 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { buildSequencer } from '../src/sequence.js';
-import { timeout } from '../src/promise.js';
+import { buildSequencer } from '../src/sequence.ts';
+import { timeout } from '../src/promise.ts';
 
 test('buildSequenceListener', async () => {
   const c = new AbortController();

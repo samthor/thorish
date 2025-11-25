@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { abortSignalTimeout, afterSignal, derivedSignal, promiseForSignal } from '../src/signal.js';
+import { abortSignalTimeout, afterSignal, derivedSignal, promiseForSignal } from '../src/signal.ts';
 import { timeout } from '../src/promise.ts';
 
 test('promiseFor', async () => {

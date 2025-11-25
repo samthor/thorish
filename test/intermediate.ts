@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { buildAsyncIntermediate } from '../src/intermediate.js';
+import { buildAsyncIntermediate } from '../src/intermediate.ts';
 
 test('buildAsyncIntermediate', async () => {
   const i = buildAsyncIntermediate<number, string>();

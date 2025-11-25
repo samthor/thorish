@@ -1,5 +1,5 @@
-import { promiseWithResolvers, unresolvedPromise } from './promise.js';
-import { promiseForSignal } from './signal.js';
+import { promiseWithResolvers, unresolvedPromise } from './promise.ts';
+import { promiseForSignal } from './signal.ts';
 
 export type SequenceListener<T> = (
   value: T,

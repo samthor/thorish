@@ -1,7 +1,6 @@
-
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { callMemoize, purgeMemoize } from '../src/memoize.js';
+import { callMemoize, purgeMemoize } from '../src/memoize.ts';
 
 test('callMemoize', async () => {
   let local = 0;

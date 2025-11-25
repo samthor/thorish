@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { buildBoundProxy } from '../src/bound-proxy.js';
+import { buildBoundProxy } from '../src/bound-proxy.ts';
 
 test('buildBoundProxy local object', () => {
   const mod = {
@@ -67,7 +67,7 @@ test('mock class ctor', () => {
     constructor(x: number) {
       this.x = x + 1;
     }
-  }
+  };
 
   // construct mocked
   const f2 = new FakeFoo(1);
@@ -77,7 +77,7 @@ test('mock class ctor', () => {
 });
 
 test('buildBoundProxy module', async () => {
-  const mod = await import('./support/module.js');
+  const mod = await import('./support/module.ts');
   const fake = buildBoundProxy(mod);
 
   assert.deepStrictEqual(fake[Symbol.toStringTag], 'Module');

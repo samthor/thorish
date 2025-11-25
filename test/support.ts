@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import * as support from '../src/support/index.js';
+import * as support from '../src/support/index.ts';
 import { toBase64Url, base64UrlToString } from '#support';
 
 import * as browser from '../src/support/browser.ts';

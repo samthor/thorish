@@ -2,6 +2,7 @@ import test from 'node:test';
 import * as assert from 'node:assert';
 import { namedListeners, soloListener } from '../src/listener.ts';
 import { derivedSignal, neverAbortedSignal } from '../src/signal.ts';
+import { timeout } from '../src/promise.ts';
 
 test('void listener', () => {
   // n.b. isn't really a test but will annoy me if the TS compiler fails
@@ -118,7 +119,7 @@ test('wrap et', () => {
 
   nl.dispatch('x', 123);
   nl.dispatch('x', 123);
-  assert.strictEqual(count, 2);
+  assert.strictEqual(count, 2, 'should be called twice');
   c.abort();
 
   const typedTarget = nl.eventTarget<{
@@ -129,7 +130,7 @@ test('wrap et', () => {
     assert.strictEqual(e.detail, 345);
     ++count;
   });
-  assert.strictEqual(anySetupCalls, 2); // called again
+  assert.strictEqual(anySetupCalls, 2, 'setup should be called twice'); // called again
   nl.dispatch('x', 345);
   assert.strictEqual(count, 3);
 });
@@ -155,6 +156,6 @@ test('hasAny', () => {
 
   abort();
 
-  assert.strictEqual(nl.hasAny('foo'), false);
+  assert.strictEqual(nl.hasAny('foo'), false, 'should no longer have any for foo');
   assert.strictEqual(nl.hasAny('unrelated' as any), false);
 });

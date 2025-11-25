@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { readableToJson } from '../src/stream.js';
+import { readableToJson } from '../src/stream.ts';
 
 const te = new TextEncoder();
 

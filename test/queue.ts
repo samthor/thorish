@@ -1,7 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { buildArrayQueue, buildLinkQueue, type Queue, WorkQueue } from '../src/queue.js';
-import { timeout, wrapTrigger } from '../src/promise.js';
+import { buildArrayQueue, buildLinkQueue, type Queue, WorkQueue } from '../src/queue.ts';
+import { timeout, wrapTrigger } from '../src/promise.ts';
 
 test('queue', async () => {
   const wq = new WorkQueue<number>();
