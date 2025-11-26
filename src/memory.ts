@@ -26,6 +26,26 @@ class TupleNode {
     return this.contents?.get(parts[0])?.get(parts.slice(1)) ?? false;
   }
 
+  all(parts: any[], prefix: any[]): [any[], any][] {
+    if (parts.length !== 0) {
+      const t = this.contents?.get(parts[0]);
+      return t?.all(parts.slice(1), prefix.concat(parts[0])) ?? [];
+    }
+
+    const out: [any[], any][] = [];
+
+    if (this.hasValue) {
+      out.push([prefix, this.value]);
+    }
+
+    for (const [k, t] of this.contents?.entries() ?? []) {
+      const inner = t.all([], prefix.concat(k));
+      out.push(...inner);
+    }
+
+    return out;
+  }
+
   get(parts: any[]): any {
     if (parts.length === 0) {
       return this.value;
@@ -63,6 +83,14 @@ class TupleNode {
   }
 }
 
+/**
+ * Map-like structure which allows fetching of unique {@link V} for a tuple-type {@link K}.
+ *
+ * This unique {@link V} is garbage-collected when no longer referenced.
+ *
+ * Each part of {@link K} must be identity comparable, as they are stored in intermediate {@link Map} instances.
+ * (There's probably a different class for where the key requires an e.g., `isEqual(...)` method or similar.)
+ */
 export class WeakIdentityCache<K extends [...any], V extends WeakKey> {
   readonly #build: (...k: K) => V;
   readonly #reg: FinalizationRegistry<K>;
@@ -70,10 +98,13 @@ export class WeakIdentityCache<K extends [...any], V extends WeakKey> {
   #count = 0;
 
   constructor(
+    /**
+     * Builds a {@link V}.
+     */
     build: (...k: K) => V,
 
     /**
-     * Called on GC of the assoicated value.
+     * Called on GC of the assoicated {@link V}.
      */
     cleanup: (...k: K) => void = () => {},
   ) {
@@ -102,6 +133,25 @@ export class WeakIdentityCache<K extends [...any], V extends WeakKey> {
     }
 
     return curr;
+  }
+
+  /**
+   * Retrieves all live {@link V} instances under the given {@link K} prefix.
+   */
+  all(...k: Partial<K>): [K, V][] {
+    let unsafe = this.#root.all(k, []);
+
+    unsafe = unsafe.filter((unsafeArr) => {
+      const arr = unsafeArr as [K, WeakRef<V>];
+      const actual = arr[1].deref();
+      if (actual === undefined) {
+        return false;
+      }
+      unsafeArr[1] = actual;
+      return true;
+    });
+
+    return unsafe as [K, V][];
   }
 
   /**

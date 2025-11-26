@@ -1,8 +1,7 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
 import { WeakIdentityCache } from '../src/memory.ts';
-import { timeout } from '../src/promise.ts';
-import { checkGC, forceNodeGC } from './support/node.ts';
+import { checkGC } from './support/node.ts';
 
 class Blah {}
 
@@ -51,4 +50,19 @@ test('memory void', async () => {
   c.get();
   assert.strictEqual(c.size, 1);
   await checkGC(() => assert.strictEqual(c.size, 0));
+});
+
+test('under', () => {
+  const c = new WeakIdentityCache<[number?, string?, string?], Blah>(() => new Blah());
+
+  c.get(1, 'hello');
+  c.get(2, 'hello');
+  c.get(2, 'hello', 'there');
+  c.get();
+
+  assert.strictEqual(c.all(2).length, 2);
+  assert.strictEqual(c.all(1).length, 1);
+  assert.strictEqual(c.all().length, 4);
+  assert.strictEqual(c.all(2, 'hello').length, 2);
+  assert.strictEqual(c.all(2, 'hello', 'x').length, 0);
 });
