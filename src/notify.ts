@@ -35,7 +35,7 @@ export function objectNotify(host: Object): boolean {
   const all = notifyMap(host);
   for (const cb of all) {
     all.delete(cb);
-    Promise.resolve().then(() => cb(true));
+    cb(true);
     return true;
   }
   return false;
@@ -52,7 +52,7 @@ export function objectNotifyAll(host: Object): number {
   all.clear();
 
   for (const cb of targets) {
-    Promise.resolve().then(() => cb(true));
+    cb(true);
   }
 
   return targets.length;
