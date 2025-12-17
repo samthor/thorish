@@ -684,7 +684,7 @@ export class Rope<K, T = void> {
   /**
    * Iterate from after the given ID, to the target ID inclusive (i.e., `(afterId,untilId]`).
    *
-   * If no `untilId` is passed or the IDs are in the wrong order, iterates from after `afterId` until the end of this {@link Rope.}.
+   * If no `untilId` is passed or the IDs are in the wrong order, iterates from after `afterId` until the end of this {@link Rope}.
    */
   *iter(
     afterId: K = this._zeroId,

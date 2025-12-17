@@ -1,3 +1,6 @@
+/**
+ * Internal node mostly for {@link WeakIdentityCache}, although has nothing to do with {@link WeakRef}.
+ */
 class TupleNode {
   private hasValue = false;
   private value?: any | undefined;
@@ -116,6 +119,29 @@ export class WeakIdentityCache<K extends [...any], V extends WeakKey> {
   }
 
   /**
+   * Provides a {@link V} for the given {@link K}.
+   * This allows you to skip the builder, however, this {@link K} will still be passed to the cleanup function when it is GC'ed.
+   *
+   * If this {@link K} already has a value, rejects the update and returns `false`.
+   * Otherwise, returns `true`.
+   */
+  provide(v: V, ...k: K): boolean {
+    const wr = this.#root.get(k);
+    let curr = wr?.deref();
+    if (curr !== undefined) {
+      return false;
+    }
+
+    curr = v;
+    const update = new WeakRef(curr);
+    this.#root.set(k, update);
+    this.#reg.register(curr, k, curr);
+    this.#count++;
+
+    return true;
+  }
+
+  /**
    * Gets this {@link K} from the cache.
    *
    * Builds the underlying {@link V} if it does not exist.
@@ -123,14 +149,15 @@ export class WeakIdentityCache<K extends [...any], V extends WeakKey> {
   get(...k: K): V {
     const wr = this.#root.get(k);
     let curr = wr?.deref();
-
-    if (curr === undefined) {
-      curr = this.#build(...k);
-      const update = new WeakRef(curr);
-      this.#root.set(k, update);
-      this.#reg.register(curr, k, curr);
-      this.#count++;
+    if (curr !== undefined) {
+      return curr;
     }
+
+    curr = this.#build(...k);
+    const update = new WeakRef(curr);
+    this.#root.set(k, update);
+    this.#reg.register(curr, k, curr);
+    this.#count++;
 
     return curr;
   }
@@ -156,8 +183,9 @@ export class WeakIdentityCache<K extends [...any], V extends WeakKey> {
 
   /**
    * Deletes this {@link K} from the cache.
+   * Returns `true` if it existed and was deleted.
    *
-   * This will prevent it from being passed to the cleanup function.
+   * This will prevent the given {@link K} from being passed to the cleanup function.
    */
   delete(...k: K): boolean {
     const wr = this.#root.get(k);
@@ -176,7 +204,20 @@ export class WeakIdentityCache<K extends [...any], V extends WeakKey> {
     return false;
   }
 
+  /**
+   * Gets the current size of actual values.
+   *
+   * This is useful for testing but might change as things are GC'ed.
+   */
   get size() {
     return this.#count;
   }
+}
+
+/**
+ * Builds a helper which provides shared named symbols.
+ */
+export function buildScopedSymbolCache(id: string): (s: string) => Symbol {
+  const cache = new WeakIdentityCache<[string], Symbol>((s) => Symbol(`${id}:${s}`));
+  return cache.get.bind(cache);
 }

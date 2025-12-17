@@ -1,6 +1,6 @@
 import test from 'node:test';
 import * as assert from 'node:assert';
-import { WeakIdentityCache } from '../src/memory.ts';
+import { buildScopedSymbolCache, WeakIdentityCache } from '../src/memory.ts';
 import { checkGC } from './support/node.ts';
 
 class Blah {}
@@ -65,4 +65,20 @@ test('under', () => {
   assert.strictEqual(c.all().length, 4);
   assert.strictEqual(c.all(2, 'hello').length, 2);
   assert.strictEqual(c.all(2, 'hello', 'x').length, 0);
+});
+
+test('symbol', async () => {
+  const s = buildScopedSymbolCache('blah');
+
+  let x1 = s('x1');
+  let x2 = s('x2');
+
+  assert.notStrictEqual(x1, x2);
+  assert.strictEqual(x1, s('x1'));
+  assert.strictEqual(x2, s('x2'));
+
+  await Promise.resolve();
+
+  assert.strictEqual(x1, s('x1'));
+  assert.strictEqual(x2, s('x2'));
 });
