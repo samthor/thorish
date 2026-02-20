@@ -233,3 +233,31 @@ test('select all undefined', async () => {
     assert.fail('should throw, no valid channels');
   } catch {}
 });
+
+test('normal close', async () => {
+  const ch = newChannel<boolean>();
+
+  ch.close(true);
+  await ch.wait();
+
+  assert.strictEqual(ch.next(), true);
+  assert.strictEqual(ch.next(), true);
+});
+
+test('prior wait close', async () => {
+  const ch = newChannel<boolean>();
+
+  const w = ch.wait();
+  ch.close(true);
+  await w;
+
+  await ch.wait();
+
+  assert.strictEqual(ch.next(), true);
+  assert.strictEqual(ch.next(), true);
+
+  await ch.wait();
+
+  assert.strictEqual(ch.next(), true);
+  assert.strictEqual(ch.next(), true);
+});

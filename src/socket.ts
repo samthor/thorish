@@ -1,5 +1,6 @@
-import { timeout } from './promise.ts';
-import { afterSignal, promiseVoidForSignal } from './signal.ts';
+import { promiseWithResolvers, timeout } from './promise.ts';
+import { buildLinkQueue } from './queue.ts';
+import { afterSignal, derivedSignal, promiseVoidForSignal } from './signal.ts';
 
 export type WebSocketSupportedPayload = string | ArrayBufferLike | Blob | ArrayBufferView;
 export type PrepMessage<T> = T | Promise<T> | (() => T | Promise<T>);
@@ -135,4 +136,91 @@ export async function socketConnect(url: string, opts?: SocketConnectArg): Promi
       { once: true },
     );
   });
+}
+
+export type SocketTransportArg = {
+  /**
+   * The delay, if any, to wait before opening the transport.
+   */
+  delay?: number;
+};
+
+export interface Transport<Type = any> {
+  ready: Promise<void>;
+
+  /**
+   * Inbound data is here.
+   */
+  in: AsyncGenerator<Type, Error | void, void>;
+
+  /**
+   * Sends a given type.
+   */
+  send(p: Type);
+}
+
+export function socketTransport(
+  signal: AbortSignal,
+  remote: string,
+  opts?: SocketTransportArg,
+): Transport<string | Uint8Array> {
+  const internalContext = derivedSignal(signal);
+
+  const inboundQueue = buildLinkQueue<string | Uint8Array>();
+  const inboundListener = inboundQueue.join(internalContext.signal);
+
+  const ready = promiseWithResolvers<void>();
+
+  let socket: WebSocket | undefined;
+  let queue: any[] | undefined = [];
+
+  const setup = () => {
+    socket = new WebSocket(remote);
+
+    socket.addEventListener('open', () => {
+      if (queue !== undefined) {
+        queue.forEach((x) => socket!.send(x));
+        queue = undefined;
+      }
+    });
+
+    socket.addEventListener('message', (e) => {
+      inboundQueue.push(e.data);
+    });
+
+    socket.addEventListener('close', (e) => {
+      internalContext.abort({ code: e.code, reason: e.reason });
+    });
+  };
+
+  if (internalContext.signal.aborted) {
+    ready.reject(internalContext.signal.reason);
+  } else {
+    const id = setTimeout(setup, opts?.delay ?? 0);
+    internalContext.signal.addEventListener('abort', () => {
+      clearTimeout(id);
+      socket?.close();
+      ready.reject(internalContext.signal.reason);
+    });
+  }
+
+  return {
+    ready: ready.promise,
+    in: (async function* () {
+      for (;;) {
+        const next = await inboundListener.next();
+        if (next === undefined) {
+          return internalContext.signal.reason;
+        }
+        yield next;
+      }
+    })(),
+    send(p) {
+      if (queue) {
+        queue.push(p);
+      } else {
+        socket!.send(p);
+      }
+    },
+  };
 }
